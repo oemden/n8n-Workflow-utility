@@ -1,4 +1,6 @@
-# Fetch n8n Workflows and Executions
+# n8n Workflow utility - n3u ( N triple U - N8n Workflow Utility )
+
+Fetch and download n8n Workflows and Executions locally.
 
 Little Scripts to fetch a workflow and download it locally or download the Execution result of a workflow by providing the execution id.
 
@@ -9,7 +11,6 @@ Current State is very basic. You'll need to get the Workflow and Executions ids 
 - Retrieve Workflow id by it's name
 - Retrieve Workflow's last Ececution id ?
 - Level Up and Upload a Workflow after changing some code locally ? ( maybe usefull in potential CI/CD pipelines ?)
-
 
 ## Http Headers
 
@@ -54,11 +55,10 @@ Or you can set the workflow id in the scripts (not recommended) or in an `.env` 
 WORKFLOW_ID="your_n8n_workflow_id_here"
 ```
 
-
 ## Save n8n workflow execution localy
 
 The script will download the execution result locally. you need to input the `<EXECUTION_ID>` as a parametre.
-See TODO... plan is tro use .env file, export or parameter.
+Makes no sense to save this in .env file, but finding lats' execution id of a Workflow could the trick
 
 In the Workflow, click on the Execution Tab to get the ID.
 
@@ -73,3 +73,21 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 - Retrieve Workflow id by it's name
 - Retrieve Workflow's last Ececution id ?
 - Level Up and Upload a Workflow after changing some code locally ? ( maybe usefull in potential CI/CD pipelines ?)
+
+- merge both scripts into one script
+- turn in to functions, no inline scripting
+- rename Project to n-triple-u n8n Workflow Utility
+- add parameters:
+  `-i` fetch/download Workflow (by id)
+  `-n` fetch/download Workflow (by Name)
+  `-e` fetch/download Execution json localy (by id)
+  `-d` local directory location to save workflow ( bypass `${LOCAL_WORKFLOW_DIR}` )
+  `-d` local directory location to save execution ( bypass `${LOCAL_EXECUTIONS_DIR}` )
+  `-n` output file name format options (simple options): 
+    `-I` (Id): <WORKFLOW_NAME>-<WORKFLOW_ID>,
+    `-D` (Date): <WORKFLOW_NAME>-<DATE>,
+    `-F` (Full): <WORKFLOW_NAME>-<WORKFLOW_ID>-<DATE>,
+    `No Options`: <WORKFLOW_NAME> if `-i`, <WORKFLOW_ID> if `n`.
+  `-U` Upload/upgrade Workflow
+  `-E` Automatically save last Execution json locally after Workfdlow fetch/download.
+  `-H` Set additionnals Headers to the command
