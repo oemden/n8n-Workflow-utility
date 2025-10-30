@@ -70,7 +70,7 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 
 ## TODOs
 
-- ✅ Use a `.env` file or `export` to get `<WORKFLOW_ID>` and/or `<EXECUTION_ID>`
+- ✅ Use a `.env` or `.n3u.env`file or `export` to get `<WORKFLOW_ID>` and/or `<EXECUTION_ID>`
 - Retrieve Workflow id by it's name
 - Retrieve Workflow's last Ececution id ?
 - Level Up and Upload a Workflow after changing some code locally ? ( maybe usefull in potential CI/CD pipelines ?)
@@ -108,3 +108,21 @@ Note: useless to set an execution id in the .env as it is unique to each executi
     n3u -i n8nW0rkf0w0001
     ```
 
+## Typical n8n Structure
+
+```bash
+.
+├── .gitignore
+├── .n3u.env.exemple
+├── README.md
+├── code
+│   ├── archives
+│   ├── codeNodes
+│   │   └── n8n-codeNode-extract-values.json
+│   ├── standaloneNodes
+│   │   └── n8n-FormNode-GetValues.json
+│   └── workflows
+│       └── archives
+│           └── my-n8n-workflow-v0.1.json
+└── my-n8n-workflow.json
+```

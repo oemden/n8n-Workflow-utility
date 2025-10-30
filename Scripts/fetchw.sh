@@ -15,8 +15,12 @@
 # WORKFLOW_ID="your_n8n_workflow_id_here"
 
 # detect .env file and load it
-if [ -f .env ]; then
+#TODO: improve .env loading with more robust method
+# and .n3u.env file or .env to avoid any conflicts
+
+if [ -f .env ] || [ -f .n3u.env ]; then
   export $(grep -v '^#' .env | xargs)
+  export $(grep -v '^#' .n3u.env | xargs)
 fi
 
 # check if WORKFLOW_ID is provided as argument
