@@ -70,14 +70,13 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 
 ## TODOs
 
-- ✅ Use a `.env` or `.n3u.env`file or `export` to get `<WORKFLOW_ID>` and/or `<EXECUTION_ID>`
+- ✅ Use only `.n3u.env`file or `export` to get `<WORKFLOW_ID>` and/or `<EXECUTION_ID>`
+- rename Project to n-triple-u -> n8n Workflow Utility
+- merge both scripts into one script
+- turn in to functions, no inline scripting
 - Retrieve Workflow id by it's name
 - Retrieve Workflow's last Ececution id ?
 - Level Up and Upload a Workflow after changing some code locally ? ( maybe usefull in potential CI/CD pipelines ?)
-
-- merge both scripts into one script
-- turn in to functions, no inline scripting
-- rename Project to n-triple-u n8n Workflow Utility
 - add parameters:
   -  `-i` fetch/download Workflow (by id)
   -  `-n` fetch/download Workflow (by Name)
@@ -92,6 +91,7 @@ Note: useless to set an execution id in the .env as it is unique to each executi
   -  `-U` Upload/upgrade Workflow
   -  `-E` Automatically save last Execution json locally after Workfdlow fetch/download.
   -  `-H` Set additionnals Headers to the command
+  -  `-v` Set a "Version" or "Comment" as a suffix (before extension)
 
 
   **Exemples of proposed usage**

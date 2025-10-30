@@ -18,9 +18,45 @@
 #TODO: improve .env loading with more robust method
 # and .n3u.env file or .env to avoid any conflicts
 
-if [ -f .env ] || [ -f .n3u.env ]; then
-  export $(grep -v '^#' .env | xargs)
+# if [ -f .env ] || [ -f .n3u.env ]; then
+  # export $(grep -v '^#' .env | xargs)
+if [ -f .n3u.env ]; then
   export $(grep -v '^#' .n3u.env | xargs)
+else
+  echo "WARNING ! No .n3u.env file found. Please create one."
+  echo "Refer to the n3u.env.example file for the required variables in the Github repo: http://github.com/oemden/repositories " 
+  echo "Here is a sample content: " && echo ""
+  echo "### Fetch n8n Workflow Environment Variables
+## Place this file in the root of the n8n project and rename it to .env
+
+############ IMPORTANT #####################
+### Add .n3u.env file in your .gitignore ###
+############################################
+
+### n8n API URL and API Key
+N8N_API_URL="https://n8n.exemple.com/api/v1"
+N8N_WORKFLOW_NAME="MY_N8N_SUPER_WORKFLOW"
+
+### Uncomment to set variable or to override your variables if they are set in your environment:
+## n8n API Key
+# N8N_HQ_API_KEY="your_n8n_api_key_here"
+## Cloudflare Access Credentials
+# CLOUDFLARE_ACCESS_CLIENT_ID="your_cloudflare_access_client_id_here"
+# CLOUDFLARE_ACCESS_CLIENT_SECRET="your_cloudflare_access_client_secret_here"
+
+### n8n Workflow ID
+WORKFLOW_ID="your_n8n_workflow_id_here"
+
+### local Workflow Working Directory
+LOCAL_WORKFLOW_DIR="./code/workflows"
+
+### local Workflow Working Directory
+LOCAL_EXECUTIONS_DIR="./code/executions"
+
+
+"
+
+  exit 1
 fi
 
 # check if WORKFLOW_ID is provided as argument
