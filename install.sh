@@ -30,12 +30,20 @@ echo "Installing N triple U has been installed to $INSTALL_PATH"
 ls -l "$INSTALL_PATH"
 
 echo "You can run it using the command: n3u"
+echo ""
+echo "Installation complete! To use 'n3u' immediately in this shell, run:"
+echo ""
 
-# Detect user's shell and source the appropriate file
-if [ -f ~/.zshrc ]; then
-    source ~/.zshrc
-elif [ -f ~/.bashrc ]; then
-    source ~/.bashrc
+# Detect user's shell and provide appropriate command
+if [ -n "$ZSH_VERSION" ]; then
+    echo "  rehash"
+elif [ -n "$BASH_VERSION" ]; then
+    echo "  hash -r"
+else
+    echo "  hash -r"
 fi
+
+echo ""
+echo "Or simply open a new terminal window."
 
 exit 0
