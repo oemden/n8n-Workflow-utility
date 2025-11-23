@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # n3u - n8n Workflow Utility
-# v0.1.0 - Refactored into functions, added argument parsing
+# v0.2.0 - Added safety checks, placeholder detection, -i flag
 # See CHANGELOG.md for full history
 #
 # Usage: ./n3u.sh [OPTIONS] [WORKFLOW_ID]
@@ -13,7 +13,7 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.1.0"
+SCRIPT_VERSION="0.2.0"
 ARCHIVE_DIR="./code/workflows/archives"
 
 # ============================================================================
@@ -27,22 +27,20 @@ print_usage() {
   cat <<EOF
 n3u - n8n Workflow Utility v${SCRIPT_VERSION}
 
-Usage: $(basename "$0") [OPTIONS] [WORKFLOW_ID]
+Usage: $(basename "$0") [OPTIONS]
 
 Options:
-  -h    Show this help message
-  -v    Show version
-
-Arguments:
-  WORKFLOW_ID    The n8n workflow ID to download (optional if set in .n3u.env)
+  -i ID   Workflow ID to download (overrides .n3u.env)
+  -h      Show this help message
+  -v      Show version
 
 Examples:
   $(basename "$0")                    # Use WORKFLOW_ID from .n3u.env
-  $(basename "$0") gp4Wc0jL6faJWYf7   # Download specific workflow
+  $(basename "$0") -i gp4Wc0jL6faJWYf7   # Download specific workflow
 
 Configuration:
   Create a .n3u.env file in your project root with required variables.
-  See .n3u.env.example for reference.
+  See .n3u.env.exemple for reference.
 EOF
 }
 
@@ -117,6 +115,43 @@ validate_inputs() {
 }
 
 # ------------------------------------------------------------------------------
+# check_workflow_exists - Verify workflow exists in n8n before proceeding
+# Exits with error if workflow not found
+# ------------------------------------------------------------------------------
+check_workflow_exists() {
+  echo "Verifying workflow ${WORKFLOW_ID} exists..."
+
+  local response
+  response=$(curl -s -X GET "${N8N_API_URL}/workflows/${WORKFLOW_ID}" \
+    -H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}" \
+    -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
+    -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
+    -H "Accept: application/json")
+
+  # Check if response is empty
+  if [[ -z "${response}" ]]; then
+    echo "ERROR: Empty response from API - check your connection"
+    exit 1
+  fi
+
+  # Check if API returned an error
+  if echo "${response}" | jq -e '.message' >/dev/null 2>&1; then
+    local error_msg
+    error_msg=$(echo "${response}" | jq -r '.message')
+    echo "ERROR: Workflow '${WORKFLOW_ID}' not found: ${error_msg}"
+    exit 1
+  fi
+
+  # Verify it's a valid workflow (has id field)
+  if ! echo "${response}" | jq -e '.id' >/dev/null 2>&1; then
+    echo "ERROR: Invalid workflow ID: ${WORKFLOW_ID}"
+    exit 1
+  fi
+
+  echo "Workflow verified: ${WORKFLOW_ID}"
+}
+
+# ------------------------------------------------------------------------------
 # build_filename - Build output filename based on options
 # Returns: filename string
 # ------------------------------------------------------------------------------
@@ -152,23 +187,48 @@ backup_existing() {
 # ------------------------------------------------------------------------------
 download_workflow() {
   local output_file="$1"
+  local response
 
   echo "Downloading workflow ${WORKFLOW_ID}..."
   echo "  API URL: ${N8N_API_URL}"
   echo "  Output:  ${output_file}"
 
-  curl -s -X GET "${N8N_API_URL}/workflows/${WORKFLOW_ID}?excludePinnedData=true" \
+  # Fetch workflow from API
+  response=$(curl -s -X GET "${N8N_API_URL}/workflows/${WORKFLOW_ID}?excludePinnedData=true" \
     -H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}" \
     -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
     -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
     -H "Accept: application/json" \
-    -H "Content-Type: application/json" \
-    | jq '.' > "${output_file}"
+    -H "Content-Type: application/json")
+
+  # Check if response is empty
+  if [[ -z "${response}" ]]; then
+    echo "ERROR: Empty response from API"
+    exit 1
+  fi
+
+  # Check if API returned an error (n8n returns 'message' or 'code' on error)
+  if echo "${response}" | jq -e '.message' >/dev/null 2>&1; then
+    local error_msg
+    error_msg=$(echo "${response}" | jq -r '.message')
+    echo "ERROR: API returned error: ${error_msg}"
+    exit 1
+  fi
+
+  # Check if response has expected workflow structure (id field)
+  if ! echo "${response}" | jq -e '.id' >/dev/null 2>&1; then
+    echo "ERROR: Invalid response - not a valid workflow"
+    echo "${response}" | head -c 200
+    exit 1
+  fi
+
+  # Save workflow to file
+  echo "${response}" | jq '.' > "${output_file}"
 
   if [[ -s "${output_file}" ]]; then
     echo "Success: Workflow saved to ${output_file}"
   else
-    echo "ERROR: Download failed or empty response"
+    echo "ERROR: Failed to save workflow to file"
     rm -f "${output_file}"
     exit 1
   fi
@@ -182,7 +242,7 @@ main() {
   local workflow_id_arg=""
 
   # Parse options
-  while getopts ":hv" opt; do
+  while getopts ":hvi:" opt; do
     case ${opt} in
       h)
         print_usage
@@ -191,6 +251,14 @@ main() {
       v)
         print_version
         exit 0
+        ;;
+      i)
+        workflow_id_arg="${OPTARG}"
+        ;;
+      :)
+        echo "ERROR: Option -${OPTARG} requires an argument"
+        print_usage
+        exit 1
         ;;
       \?)
         echo "Invalid option: -${OPTARG}"
@@ -201,13 +269,18 @@ main() {
   done
   shift $((OPTIND - 1))
 
-  # Get positional argument (workflow ID)
-  workflow_id_arg="${1:-}"
+  # Warn about stray positional arguments
+  if [[ $# -gt 0 ]]; then
+    echo "ERROR: Unknown argument(s): $*"
+    echo "       Use -i <ID> to specify workflow ID"
+    exit 1
+  fi
 
   # Execute workflow
   load_env
   validate_env
   validate_inputs "${workflow_id_arg}"
+  check_workflow_exists
 
   local output_file
   output_file=$(build_filename)
@@ -222,6 +295,6 @@ main "$@"
 # ============================================================================
 # CHANGELOG (latest only - see CHANGELOG.md for full history)
 # ============================================================================
+# v0.2.0 - Added -i flag, workflow existence check, API validation, error on stray args
 # v0.1.0 - Refactored into functions, added argument parsing, backup feature
-# v0.0.2 - Switched to .n3u.env file
 # v0.0.1 - Initial release

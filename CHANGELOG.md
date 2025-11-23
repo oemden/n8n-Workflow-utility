@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2025-11-23
+
+### Added
+- `-i` flag to specify workflow ID (replaces positional argument)
+- `check_workflow_exists()` - validates workflow exists in n8n before download
+- API response validation in `download_workflow()`
+- Error on unknown/stray arguments (must use `-i` flag)
+
+### Changed
+- Positional arguments no longer accepted (use `-i <ID>` instead)
+- Backup only occurs after workflow is verified to exist
+
 ## [0.1.0] - 2024-XX-XX
 
 ### Added

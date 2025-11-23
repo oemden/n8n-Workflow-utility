@@ -1,17 +1,20 @@
 # n8n Workflow utility - n3u -> N triple U
 
+**Version: 0.2.0**
+
 Fetch and download n8n Workflows and Executions locally.
 
-Little Basic Scripts to fetch a workflow and download it locally or download the Execution result of a workflow by providing the execution id.
+Script to fetch a workflow and download it locally or download the Execution result of a workflow by providing the execution id.
 
-Current State is very basic.
-You'll need to get the Workflow and Executions ids "manually".
-
-Yet it proved usefull and handy to download Workflows in the Working Folder, Working on it, and version control it
+Features:
+- Download workflows by ID (`-i` flag) or from `.n3u.env`
+- Validates workflow exists before download
+- Auto-backup existing files to archives
+- Cloudflare Access authentication support
 
 ### Next Steps:
 
-Just check the TODOs at the end of the document.
+Check the TODOs at the end of the document.
 
 ### Http Headers
 
@@ -31,29 +34,32 @@ export CLOUDFLARE_ACCESS_CLIENT_ID ="my-CF-Acces-client-id"
 export CLOUDFLARE_ACCESS_CLIENT_SECRET ="my-CF-Acces-client-secret"
 ```
 
-### local .env**
+### local .n3u.env
 
-Scripts now detect the presence of an .env file from where the script are called.
+Scripts detect the presence of a `.n3u.env` file from where the script is called.
 
 
 ## Usage
 
-You need to input the `<WORKFLOW_ID>` as a parameter.
-
 ### Download n8n workflow json locally
 
-TO download the Workflow, you can either
+**Using `-i` flag (recommended):**
+```bash
+./Scripts/n3u.sh -i <WORKFLOW_ID>
+# Example:
+./Scripts/n3u.sh -i gp4Wc0jL6faJWYf7
+```
 
-- provide the workflow id:
-  - **Usage**: `./fetchw.sh <WORKFLOW_ID>`
-  - **Example**: `./fetchw.sh 123456789abc`
+**Using `.n3u.env` file:**
+```bash
+# Set WORKFLOW_ID in .n3u.env, then:
+./Scripts/n3u.sh
+```
 
-Or you can 
-
-- set the workflow id in the scripts (not recommended) or in an `.env` file at the root of the workflow repo.
-  ```bash
-  WORKFLOW_ID="your_n8n_workflow_id_here"
-  ```
+**Options:**
+- `-i ID` - Workflow ID to download (overrides .n3u.env)
+- `-h` - Show help message
+- `-v` - Show version
 
 ### Save n8n workflow execution localy
 
@@ -71,15 +77,17 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 ## TODOs
 
 - ✅ Use only `.n3u.env`file or `export` to get `<WORKFLOW_ID>` and/or `<EXECUTION_ID>`
+- ✅ turn in to functions, no inline scripting
+- ✅ `-i` fetch/download Workflow (by id)
+- ✅ Validate workflow exists before download
 - rename Project to n-triple-u -> n8n Workflow Utility
 - merge both scripts into one script
-- turn in to functions, no inline scripting
-- Retrieve Workflow id by it's name
+- Retrieve Workflow id by it's name (for upload only)
 - Retrieve Workflow's last Ececution id ?
 - Level Up and Upload a Workflow after changing some code locally ? ( maybe usefull in potential CI/CD pipelines ?)
 - add parameters:
-  -  `-i` fetch/download Workflow (by id)
-  -  `-n` fetch/download Workflow (by Name)
+  -  ✅ `-i` fetch/download Workflow (by id)
+  -  `-n` override Workflow Name (for upload)
   -  `-e` fetch/download Execution json localy (by id)
   -  `-l` local directory location to save workflow ( bypass `${LOCAL_WORKFLOW_DIR}` ) # ToChange -> use .env `${LOCAL_WORKFLOW_DIR}`
   -  `-L` local directory location to save execution ( bypass `${LOCAL_EXECUTIONS_DIR}` ) # ToChange -> bypass .env `${LOCAL_WORKFLOW_DIR}`
