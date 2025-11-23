@@ -92,7 +92,7 @@ Note: useless to set an execution id in the .env as it is unique to each executi
   -  `-E` Automatically save last Execution json locally after Workfdlow fetch/download.
   -  `-H` Set additionnals Headers to the command
   -  `-v` Set a "Version" or "Comment" as a suffix (before extension)
-
+  -  `-O` Output .n3u.env Variables
 
   **Exemples of proposed usage**
 

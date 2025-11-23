@@ -1,15 +1,15 @@
 #!/bin/bash
-# Scripts/fetchw.sh
-# A Bash script to install Scripts/fetchw.sh.
+# Scripts/n3u.sh
+# A Bash script to install Scripts/n3u.sh.
 # v0.1.0
 # Will be installed in /usr/local/bin/n3u
 
 INSTALL_PATH="/usr/local/bin/n3u"
-SCRIPT_SOURCE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/Scripts/fetchw.sh"
+SCRIPT_SOURCE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/Scripts/n3u.sh"
 
 # Check if the script source file exists
 if [ ! -f "$SCRIPT_SOURCE_PATH" ]; then
-    echo "Error: Scripts/fetchw.sh not found in the current directory."
+    echo "Error: Scripts/n3u.sh not found in the current directory."
     exit 1
 fi
 
