@@ -16,7 +16,15 @@
 
 ## Next Priority
 
+- `-N` vs `N8N_WORKFLOW_NAME` -> if -N empty value -> use ENV value, if ENV value empty -> meesage and ask to continue without changing name ( if other options are set ), or cancel uplaod / Restore. ( if only -N / -R is set )
 - `-l` / `-L` custom output directories
+
+## Completed in v0.5.0
+
+- ✅ `n8n_api()` wrapper function - single point for all API calls
+- ✅ Dynamic `N3U_HEADER_*` system - add any custom header via `.n3u.env`
+- ✅ Replaced 6 hardcoded curl blocks with DRY one-liners
+- ✅ Removed hardcoded Cloudflare headers (now user-configurable)
 
 ## Completed in v0.4.2
 
@@ -55,7 +63,6 @@
 ## Later
 
 - `-D` / `-C` flags: improve MD5 check for date-based filenames (date always changes)
-- `-H` extra headers for API requests
 - `-o` output current .n3u.env variables ( find a way to avoid secrets if possible or use `-O` )
 - `-m` add comments to workflows-changelog.md
 - `N3U_AUTO_BACKUP` - implement skip backup option

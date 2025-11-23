@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2025-11-23
+
+### Added
+- `n8n_api()` wrapper function - single point for all API calls
+- Dynamic `N3U_HEADER_*` system - add any custom header via `.n3u.env`
+- Headers now user-configurable instead of hardcoded
+
+### Changed
+- **Breaking**: Cloudflare headers no longer hardcoded - use `N3U_HEADER_*` prefix
+- Replaced 6 curl blocks with `n8n_api()` one-liners
+- Updated `.n3u.env.exemple` section 2 with new header documentation
+- Updated README Http Headers section
+
+### Removed
+- Hardcoded `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers
+
 ## [0.4.2] - 2025-11-23
 
 ### Changed
@@ -157,7 +173,7 @@ All notable changes to this project will be documented in this file.
 - Positional arguments no longer accepted (use `-i <ID>` instead)
 - Backup only occurs after workflow is verified to exist
 
-## [0.1.0] - 2024-XX-XX
+## [0.1.0] - 2024-10-30
 
 ### Added
 - Refactored script into functions
@@ -168,14 +184,10 @@ All notable changes to this project will be documented in this file.
 ### Changed
 - Default output: `<workflow_name>.json` in root folder
 - Existing files backed up to `./code/workflows/archives/`
-
-## [0.0.2] - 2024-XX-XX
-
-### Changed
 - Switched from `.env` to `.n3u.env` file to avoid conflicts
 - Added warning when no `.n3u.env` file is found
 
-## [0.0.1] - 2024-XX-XX
+## [0.0.1] - 2024-10-25
 
 ### Added
 - Initial release

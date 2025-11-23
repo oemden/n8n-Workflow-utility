@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.4.2**
+**Version: 0.5.0**
 
 Fetch and download n8n Workflows and Executions locally.
 
@@ -18,21 +18,25 @@ Check the TODOs at the end of the document.
 
 ### Http Headers
 
-Both scripts include 3x http headers:
+The script always sends:
+- `X-N8N-API-KEY` (from `N8N_HQ_API_KEY`)
+- `Accept: application/json`
+
+**Custom headers** use the `N3U_HEADER_*` prefix in `.n3u.env`:
 
 ```bash
-  -H "X-N8N-API-KEY: ${N8N_MY_API_KEY}" \
-  -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
-  -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
+# Cloudflare Access (if behind CF)
+N3U_HEADER_CF_CLIENT_ID="CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}"
+N3U_HEADER_CF_CLIENT_SECRET="CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}"
+
+# Or hardcode directly
+N3U_HEADER_CF_CLIENT_ID="CF-Access-Client-Id: your_client_id"
+
+# Any custom header
+N3U_HEADER_BEARER="Authorization: Bearer ${MY_TOKEN}"
 ```
 
-You can either save n8n API Token and Cloudflare's Application Access in your profile, export them or the them in the .n3u.env as you prefer.
-
-```bash
-export N8N_MY_API_KEY="my_n8n_API-KEY123"
-export CLOUDFLARE_ACCESS_CLIENT_ID ="my-CF-Acces-client-id"
-export CLOUDFLARE_ACCESS_CLIENT_SECRET ="my-CF-Acces-client-secret"
-```
+Each `N3U_HEADER_*` value is passed directly to `curl -H`.
 
 ### local .n3u.env
 

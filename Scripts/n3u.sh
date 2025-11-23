@@ -13,7 +13,7 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.4.2"
+SCRIPT_VERSION="0.5.0"
 
 # Default directories (can be overridden by .n3u.env)
 LOCAL_WORKFLOW_DIR="${LOCAL_WORKFLOW_DIR:-./code/workflows}"
@@ -36,6 +36,37 @@ AUTO_APPROVE_ALL=false
 # ============================================================================
 # FUNCTIONS
 # ============================================================================
+
+# ------------------------------------------------------------------------------
+# n8n_api - Wrapper for n8n API calls with dynamic headers
+# Arguments: $1 - HTTP method (GET, PUT, POST, DELETE)
+#            $2 - API endpoint (e.g., /workflows/${ID})
+#            $3 - JSON payload for PUT/POST (optional)
+# Returns: curl response (JSON)
+# Headers: Always includes X-N8N-API-KEY and Accept
+#          Adds all N3U_HEADER_* env vars (value = "Header-Name: value")
+# ------------------------------------------------------------------------------
+n8n_api() {
+  local method="$1"
+  local endpoint="$2"
+  local data="${3:-}"
+
+  local -a headers=()
+  headers+=(-H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}")
+  headers+=(-H "Accept: application/json")
+
+  # Add all N3U_HEADER_* values (already in "Header-Name: value" format)
+  for var in $(compgen -v | grep "^N3U_HEADER_"); do
+    [[ -n "${!var}" ]] && headers+=(-H "${!var}")
+  done
+
+  if [[ -n "${data}" ]]; then
+    headers+=(-H "Content-Type: application/json")
+    curl -s -X "${method}" "${N8N_API_URL}${endpoint}" "${headers[@]}" -d "${data}"
+  else
+    curl -s -X "${method}" "${N8N_API_URL}${endpoint}" "${headers[@]}"
+  fi
+}
 
 # ------------------------------------------------------------------------------
 # prompt_confirm - Reusable y/n confirmation prompt with auto-approve support
@@ -279,11 +310,7 @@ check_workflow_exists() {
   echo "Verifying workflow ${WORKFLOW_ID} exists..."
 
   local response
-  response=$(curl -s -X GET "${N8N_API_URL}/workflows/${WORKFLOW_ID}" \
-    -H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}" \
-    -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
-    -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
-    -H "Accept: application/json")
+  response=$(n8n_api GET "/workflows/${WORKFLOW_ID}")
 
   # Check if response is empty
   if [[ -z "${response}" ]]; then
@@ -487,12 +514,7 @@ download_workflow() {
   echo "  API URL: ${N8N_API_URL}"
 
   # Fetch workflow from API
-  response=$(curl -s -X GET "${N8N_API_URL}/workflows/${WORKFLOW_ID}?excludePinnedData=true" \
-    -H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}" \
-    -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
-    -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/json")
+  response=$(n8n_api GET "/workflows/${WORKFLOW_ID}?excludePinnedData=true")
 
   # Check if response is empty
   if [[ -z "${response}" ]]; then
@@ -577,11 +599,7 @@ get_latest_execution_id() {
 
   echo "Fetching latest execution for workflow ${WORKFLOW_ID}..."
 
-  response=$(curl -s -X GET "${N8N_API_URL}/executions?workflowId=${WORKFLOW_ID}&limit=1" \
-    -H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}" \
-    -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
-    -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
-    -H "Accept: application/json")
+  response=$(n8n_api GET "/executions?workflowId=${WORKFLOW_ID}&limit=1")
 
   if [[ -z "${response}" ]]; then
     echo "ERROR: Empty response from API"
@@ -660,11 +678,7 @@ download_execution() {
   echo "Downloading execution ${exec_id}..."
   echo "  API URL: ${N8N_API_URL}"
 
-  response=$(curl -s -X GET "${N8N_API_URL}/executions/${exec_id}?includeData=true" \
-    -H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}" \
-    -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
-    -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
-    -H "Accept: application/json")
+  response=$(n8n_api GET "/executions/${exec_id}?includeData=true")
 
   if [[ -z "${response}" ]]; then
     echo "ERROR: Empty response from API"
@@ -712,11 +726,7 @@ check_name_conflict() {
 
   # Fetch all workflows and check for name match with different ID
   local response
-  response=$(curl -s -X GET "${N8N_API_URL}/workflows" \
-    -H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}" \
-    -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
-    -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
-    -H "Accept: application/json")
+  response=$(n8n_api GET "/workflows")
 
   if [[ -z "${response}" ]]; then
     echo "WARNING: Could not check for name conflicts (empty response)"
@@ -825,13 +835,7 @@ upload_workflow() {
   echo "Uploading..."
 
   # Upload via PUT
-  response=$(echo "${payload}" | curl -s -X PUT "${N8N_API_URL}/workflows/${WORKFLOW_ID}" \
-    -H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}" \
-    -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
-    -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
-    -H "Accept: application/json" \
-    -H "Content-Type: application/json" \
-    -d @-)
+  response=$(n8n_api PUT "/workflows/${WORKFLOW_ID}" "${payload}")
 
   # Check response
   if [[ -z "${response}" ]]; then
