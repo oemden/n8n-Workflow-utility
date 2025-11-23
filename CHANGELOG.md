@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.5.1] - 2025-11-23
+
+### Fixed
+- Backup files now use `.bak.json` extension (was `.bak`) for IDE syntax highlighting
+
 ## [0.2.5] - 2025-11-23
 
 ### Added

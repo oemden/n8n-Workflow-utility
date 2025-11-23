@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.2.5**
+**Version: 0.2.5.1**
 
 Fetch and download n8n Workflows and Executions locally.
 

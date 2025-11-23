@@ -13,7 +13,7 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.2.5"
+SCRIPT_VERSION="0.2.5.1"
 ARCHIVE_DIR="./code/workflows/archives"
 
 # Remote workflow name (set by check_workflow_exists)
@@ -423,7 +423,7 @@ backup_existing() {
 
     local backup_date
     backup_date=$(date "+%Y%m%d%H%M")
-    local backup_name="${N8N_WORKFLOW_NAME}-${backup_date}.bak"
+    local backup_name="${N8N_WORKFLOW_NAME}-${backup_date}.bak.json"
     local backup_path="${ARCHIVE_DIR}/${backup_name}"
 
     echo "Backing up existing file to: ${backup_path}"
@@ -602,6 +602,7 @@ main "$@"
 # ============================================================================
 # CHANGELOG (latest only - see CHANGELOG.md for full history)
 # ============================================================================
+# v0.2.5.1 - Backup files now .bak.json (keeps IDE syntax highlighting)
 # v0.2.5 - Name consistency check: warn + confirm if remote/local names differ
 # v0.2.4 - Naming refactor: -w (local filename), -n (get remote name), -N (set remote name)
 # v0.2.3 - MD5 check uses base filename (ignores -D date and -V version suffixes)
