@@ -109,57 +109,125 @@ The script compares the remote workflow against your local file using MD5 checks
 - `-I` (ID) affects comparison: different ID = different workflow
 - `-D` (date) and `-V` (version) are **ignored** in comparison
 
-This means:
-```bash
-./n3u.sh -V v1.0    # Downloads workflow-v1.0.json
-./n3u.sh            # Compares against workflow.json → skips if unchanged
-./n3u.sh -V v2.0    # Compares against workflow.json → skips if unchanged
-```
-
-The date/version suffixes are for **your local organization**, not workflow identity. The script always compares against the base filename (`<NAME>.json` or `<NAME>-<ID>.json`).
+The script always compares against the base filename (`<NAME>.json` or `<NAME>-<ID>.json`). Date/version suffixes are for your local organization only.
 
 ### Upload workflow to n8n
 
 **Upload current workflow:**
+
 ```bash
-./Scripts/n3u.sh -U              # Uses N8N_WORKFLOW_NAME from .n3u.env
-./Scripts/n3u.sh -U -N "NewName" # Override name on upload
+# Upload using N8N_WORKFLOW_NAME from .n3u.env
+./Scripts/n3u.sh -U
+
+# Override name on upload
+./Scripts/n3u.sh -U -N "NewName"
 ```
 
 **Restore from archive:**
+
 ```bash
 ./Scripts/n3u.sh -R ./code/workflows/archives/my-workflow-v1.bak.json
 ```
 
 **How upload works:**
+
 - Reads workflow ID from file JSON (or uses `-i` flag)
 - Checks for name conflicts (warns if name exists with different ID)
 - Strips read-only metadata fields before upload (n8n rejects extra properties)
 - Uses PUT to update existing workflow
-
-**Fields uploaded:** `name`, `nodes`, `connections`, `settings`
-
-**Fields stripped:** `id`, `active`, `updatedAt`, `createdAt`, `shared`, `versionId`, `versionCounter`, `triggerCount`, `isArchived`, `meta`, `staticData`
+- Fields uploaded: `name`, `nodes`, `connections`, `settings`
+- Fields stripped: `id`, `active`, `updatedAt`, `createdAt`, `shared`, `versionId`, `versionCounter`, `triggerCount`, `isArchived`, `meta`, `staticData`
 
 ### Download execution
 
 **Download latest execution:**
+
 ```bash
 ./Scripts/n3u.sh -e              # Downloads latest execution for workflow in .n3u.env
 ./Scripts/n3u.sh -i <ID> -e      # Downloads latest execution for specific workflow
 ```
 
 **Download specific execution:**
+
 ```bash
 ./Scripts/n3u.sh -e 12345        # Downloads execution with ID 12345
 ```
 
 **Auto-fetch after workflow download:**
+
 ```bash
 ./Scripts/n3u.sh -E              # Downloads workflow + latest execution
 ```
 
 Output: `<WORKFLOW_NAME>_exec-<EXEC_ID>-<DATE>.json` in `./code/executions/`
+
+## Examples by Use Case
+
+### Daily backup
+```bash
+./Scripts/n3u.sh
+```
+Downloads workflow using `.n3u.env` settings. Skips if unchanged.
+
+### Before making changes
+```bash
+./Scripts/n3u.sh -V "before-refactor"
+# Output: MyWorkflow-before-refactor.json
+```
+Create a named snapshot before editing in n8n.
+
+### Timestamped backup
+```bash
+./Scripts/n3u.sh -D
+# Output: MyWorkflow-202311231430.json
+```
+Keep multiple dated copies for audit trail.
+
+### Full archive (ID + date)
+```bash
+./Scripts/n3u.sh -C
+# Output: MyWorkflow-gp01234ABC-202311231430.json
+```
+Complete format when managing multiple workflows.
+
+### Check remote name
+```bash
+./Scripts/n3u.sh -n
+```
+See what the workflow is called in n8n, compare with local `.n3u.env`.
+
+### Debug a failed workflow
+```bash
+./Scripts/n3u.sh -e
+# or with specific execution:
+./Scripts/n3u.sh -e 12345
+```
+Download execution data to inspect input/output of each node.
+
+### Download workflow + latest execution
+```bash
+./Scripts/n3u.sh -E
+```
+Get both workflow definition and last run data in one command.
+
+### Restore from backup
+```bash
+./Scripts/n3u.sh -R ./code/workflows/archives/MyWorkflow-202311231430.bak.json
+```
+Upload an archived version back to n8n.
+
+### Upload with new name
+```bash
+./Scripts/n3u.sh -U -N "MyWorkflow v2"
+```
+Push local changes and rename the workflow in n8n.
+
+### Skip confirmation prompts
+```bash
+./Scripts/n3u.sh -y      # Skip minor prompts (name mismatch)
+./Scripts/n3u.sh -Y      # Skip ALL prompts (use with caution)
+```
+Useful for scripted backups.
 
 ## Typical n8n Project Structure
 
@@ -184,66 +252,5 @@ You can chnage paths in the .n3u.nev file if above structure does not suit you.
 
 ## TODOs
 
-### Completed
-- ✅ Use only `.n3u.env` file or `export` to get `<WORKFLOW_ID>` and/or `<EXECUTION_ID>`
-- ✅ Turn into functions, no inline scripting
-- ✅ `-i` fetch/download Workflow (by id)
-- ✅ Validate workflow exists before download
-- ✅ `-n` override Workflow Name (for filename and upload)
-- ✅ `-I` (Id): `<WORKFLOW_NAME>-<WORKFLOW_ID>.json`
-- ✅ `-D` (Date): `<WORKFLOW_NAME>-<DATE>.json`
-- ✅ `-C` (Complete): `<WORKFLOW_NAME>-<WORKFLOW_ID>-<DATE>.json`
-- ✅ `-V` (Version): `<WORKFLOW_NAME>-<VERSION>.json`
-- ✅ MD5 change detection (skip download if unchanged)
-- ✅ MD5 uses base filename (ignores -D/-V suffixes)
+See [TODOs.md](TODOs.md) for the complete roadmap and changelog.
 
-### Next Priority
-- `-l` / `-L` custom output directories
-
-### Completed in v0.4.2
-- ✅ Early resolution refactor: all flag/env precedence resolved in one place
-- ✅ Cleaner code: removed duplicate resolution logic from operational sections
-
-### Completed in v0.4.1
-- ✅ MD5 check now always compares against standard base filename `<NAME>.json`
-- ✅ Consistent behavior across `-I`, `-D`, `-C`, `-V` flags
-- ✅ "Save with current format options anyway?" prompt when unchanged
-
-### Completed in v0.4.0.1
-- ✅ `-e <ID>` now shows execution info (ID, workflow) like `-e` (latest)
-- ✅ `-E` now continues to execution even when workflow unchanged
-
-### Completed in v0.4.0
-- ✅ `-e [ID]` download execution (latest or specific)
-- ✅ `-E` auto-fetch latest execution after workflow download
-- ✅ Merged `fetche.sh` into main script (removed)
-- ✅ `get_latest_execution_id()` function
-- ✅ `download_execution()` function
-
-### Completed in v0.3.1
-- ✅ `-y` / `-Y` Auto-approve (minor / all) with `AUTO_APPROVE` env var
-
-### Completed in v0.3.0
-- ✅ `-U` Upload/upgrade Workflow
-- ✅ `-R FILE` Restore specific archived workflow
-- ✅ `check_name_conflict()` - warn on name collision before upload
-
-### Later
-- `-D` / `-C` flags: improve MD5 check for date-based filenames (date always changes)
-- `-H` extra headers for API requests
-- `-O` output current .n3u.env variables
-- `-m` add comments to workflows-changelog.md
-- `N3U_AUTO_BACKUP` - implement skip backup option
-- Rename project to n-triple-u
-- `--long` parameters for all flags
-- Handle archives folder path when overridden by `-l` / `-L`
-
-### Future Usage Examples
-
-```bash
-# Download with full options (future)
-n3u -n "my_super_Automation" -l "Exports" -C -E
-
-# Upload workflow
-n3u -U ./my-workflow.json -n "New Name"
-```
