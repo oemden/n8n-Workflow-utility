@@ -1,6 +1,6 @@
 # n3u
 
-**n8n Workflow utility - n3u** ( *pronunce N triple U* ), fetch and download n8n Workflows and Executions locally.
+**n8n Workflow utility - n3u** ( *pronounce N triple U* ), fetch and download n8n Workflows and Executions locally.
 
 **Version: 0.5.0**
 
@@ -240,7 +240,7 @@ Useful for scripted backups.
 
 ## Typical n8n Project Structure
 
-You can chnage paths in the .n3u.nev file if above structure does not suit you.
+You can change paths in the `.n3u.env` file if above structure does not suit you.
 
 ```bash
 .
