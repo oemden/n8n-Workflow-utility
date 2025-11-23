@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.2] - 2025-11-23
+
+### Changed
+- Early resolution refactor: all flag/env precedence now resolved in single block after `load_env()`
+- Removed duplicate resolution code from EXECUTION MODE and DOWNLOAD MODE sections
+- Cleaner, more maintainable code structure
+
+### Added
+- `EARLY RESOLUTION` comment block in `main()` documenting the pattern
+
+## [0.4.1] - 2025-11-23
+
+### Changed
+- `check_workflow_changed()` - now always compares against standard base filename `<NAME>.json`
+- Consistent MD5 check behavior across `-I`, `-D`, `-C`, `-V` flags
+
+### Added
+- "Save with current format options anyway?" prompt when workflow unchanged but format flags used
+- Prompt uses "minor" risk level (auto-approved with `-y` flag)
+
 ## [0.4.0.1] - 2025-11-23
 
 ### Fixed

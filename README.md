@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.4.0.1**
+**Version: 0.4.2**
 
 Fetch and download n8n Workflows and Executions locally.
 
@@ -26,7 +26,7 @@ Both scripts include 3x http headers:
   -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
 ```
 
-You can either save n8n API Token and Cloudflare's Application Access in your profile or export them if you prefer.
+You can either save n8n API Token and Cloudflare's Application Access in your profile, export them or the them in the .n3u.env as you prefer.
 
 ```bash
 export N8N_MY_API_KEY="my_n8n_API-KEY123"
@@ -59,6 +59,7 @@ This allows you to:
 ### Download n8n workflow json locally
 
 **Using `-i` flag (recommended):**
+
 ```bash
 ./Scripts/n3u.sh -i <WORKFLOW_ID>
 # Example:
@@ -66,12 +67,14 @@ This allows you to:
 ```
 
 **Using `.n3u.env` file:**
+
 ```bash
 # Set WORKFLOW_ID in .n3u.env, then:
 ./Scripts/n3u.sh
 ```
 
 **Options:**
+
 - `-i ID` - Workflow ID (overrides .n3u.env)
 - `-w NAME` - Override local filename for download
 - `-n` - Get remote workflow name (info only)
@@ -82,14 +85,15 @@ This allows you to:
 - `-D` - Include date in filename
 - `-C` - Complete format (ID + date)
 - `-V VER` - Add version/comment suffix
-- `-y` - Auto-approve minor confirmations (name mismatch)
 - `-e [ID]` - Download execution (latest if no ID, or specific ID)
 - `-E` - Auto-fetch latest execution after workflow download
+- `-y` - Auto-approve minor confirmations (name mismatch)
 - `-Y` - Auto-approve ALL confirmations (including uploads)
 - `-h` - Show help message
 - `-v` - Show version
 
 **Filename formats:**
+
 ```
 (default)  <NAME>.json
 -I         <NAME>-<ID>.json
@@ -157,7 +161,9 @@ The date/version suffixes are for **your local organization**, not workflow iden
 
 Output: `<WORKFLOW_NAME>_exec-<EXEC_ID>-<DATE>.json` in `./code/executions/`
 
-## Typical n8n Structure
+## Typical n8n Project Structure
+
+You can chnage paths in the .n3u.nev file if above structure does not suit you.
 
 ```bash
 .
@@ -194,6 +200,15 @@ Output: `<WORKFLOW_NAME>_exec-<EXEC_ID>-<DATE>.json` in `./code/executions/`
 ### Next Priority
 - `-l` / `-L` custom output directories
 
+### Completed in v0.4.2
+- ✅ Early resolution refactor: all flag/env precedence resolved in one place
+- ✅ Cleaner code: removed duplicate resolution logic from operational sections
+
+### Completed in v0.4.1
+- ✅ MD5 check now always compares against standard base filename `<NAME>.json`
+- ✅ Consistent behavior across `-I`, `-D`, `-C`, `-V` flags
+- ✅ "Save with current format options anyway?" prompt when unchanged
+
 ### Completed in v0.4.0.1
 - ✅ `-e <ID>` now shows execution info (ID, workflow) like `-e` (latest)
 - ✅ `-E` now continues to execution even when workflow unchanged
@@ -214,8 +229,7 @@ Output: `<WORKFLOW_NAME>_exec-<EXEC_ID>-<DATE>.json` in `./code/executions/`
 - ✅ `check_name_conflict()` - warn on name collision before upload
 
 ### Later
-- Retrieve workflow's last Execution ID
-- `-E` auto-fetch last execution after workflow download
+- `-D` / `-C` flags: improve MD5 check for date-based filenames (date always changes)
 - `-H` extra headers for API requests
 - `-O` output current .n3u.env variables
 - `-m` add comments to workflows-changelog.md

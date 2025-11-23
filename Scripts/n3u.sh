@@ -13,7 +13,7 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.4.0.1"
+SCRIPT_VERSION="0.4.2"
 
 # Default directories (can be overridden by .n3u.env)
 LOCAL_WORKFLOW_DIR="${LOCAL_WORKFLOW_DIR:-./code/workflows}"
@@ -420,31 +420,19 @@ get_md5() {
 # check_workflow_changed - Compare new workflow with existing file
 # Arguments: $1 - new file (temp), $2 - output file (may have date/version suffix)
 # Returns: 0 if changed (or no existing), 1 if unchanged
-# Note: Derives base filename for comparison (strips -D date and -V version suffixes)
+# Note: Always compares against standard base filename <NAME>.json for consistency
 # ------------------------------------------------------------------------------
 check_workflow_changed() {
   local new_file="$1"
   local output_file="$2"
 
-  # Derive base filename for comparison (strip date/version suffixes)
-  # Output: workflow-ID-202311231234-v1.0.json → workflow-ID.json
-  local base_file="${output_file}"
-
-  # Strip version suffix: -<anything>.json → .json (but keep -ID which is alphanumeric)
-  # Version pattern: dash followed by non-date content before .json
-  # e.g., -v1.0.json, -beta.json, -test.json
-  if [[ -n "${FORMAT_WITH_VERSION}" ]]; then
-    base_file=$(echo "${base_file}" | sed "s/-${FORMAT_WITH_VERSION}\.json$/.json/")
-  fi
-
-  # Strip date suffix: -YYYYMMDDHHMM.json → .json (12 digits)
-  if [[ "${FORMAT_WITH_DATE}" == "true" ]]; then
-    base_file=$(echo "${base_file}" | sed 's/-[0-9]\{12\}\.json$/.json/')
-  fi
+  # Always use standard base filename for comparison: <NAME>.json
+  # This ensures consistent behavior across -I, -D, -C, -V flags
+  local base_file="${N8N_WORKFLOW_NAME}.json"
 
   # No base file exists = changed (new)
   if [[ ! -f "${base_file}" ]]; then
-    # Also check output file directly (in case base == output)
+    # Also check output file directly (in case using format flags on first download)
     if [[ ! -f "${output_file}" ]]; then
       return 0
     fi
@@ -539,9 +527,35 @@ download_workflow() {
 
   # Check if workflow has changed
   if ! check_workflow_changed "${temp_file}" "${output_file}"; then
-    echo "INFO: Workflow unchanged (checksums match) - skipping save"
-    rm -f "${temp_file}"
-    return 1
+    # Check if user wants to save with format flags anyway
+    local has_format_flags=false
+    if [[ "${FORMAT_WITH_ID}" == "true" || "${FORMAT_WITH_DATE}" == "true" || -n "${FORMAT_WITH_VERSION}" ]]; then
+      has_format_flags=true
+    fi
+
+    if [[ "${has_format_flags}" == "true" ]]; then
+      # Check if output file with format already exists
+      if [[ -f "${output_file}" ]]; then
+        echo "INFO: Workflow unchanged - file already exists: ${output_file}"
+        rm -f "${temp_file}"
+        return 1
+      fi
+      # Output file doesn't exist, prompt to save with format
+      echo "INFO: Workflow unchanged (checksums match)"
+      echo "      Output would be: ${output_file}"
+      if prompt_confirm "Save with current format options anyway?" "minor"; then
+        # Continue to save
+        :
+      else
+        echo "Skipping save."
+        rm -f "${temp_file}"
+        return 1
+      fi
+    else
+      echo "INFO: Workflow unchanged (checksums match) - skipping save"
+      rm -f "${temp_file}"
+      return 1
+    fi
   fi
 
   # Backup existing file before overwriting
@@ -952,7 +966,22 @@ main() {
   load_env
   validate_env
 
-  # Apply AUTO_APPROVE from .n3u.env (flags take precedence)
+  # ==========================================================================
+  # EARLY RESOLUTION: Resolve all flag/env precedence in one place
+  # Pattern: flag > env > default (flag already set by getopts above)
+  # ==========================================================================
+
+  # Workflow ID: -i flag > WORKFLOW_ID env
+  if [[ -n "${workflow_id_arg}" ]]; then
+    WORKFLOW_ID="${workflow_id_arg}"
+  fi
+
+  # Local filename: -w flag > N8N_WORKFLOW_NAME env
+  if [[ -n "${local_name_arg}" ]]; then
+    N8N_WORKFLOW_NAME="${local_name_arg}"
+  fi
+
+  # Auto-approve: -y/-Y flags > AUTO_APPROVE env > none
   if [[ "${AUTO_APPROVE_MINOR}" != "true" && "${AUTO_APPROVE_ALL}" != "true" ]]; then
     case "${AUTO_APPROVE:-none}" in
       minor) AUTO_APPROVE_MINOR=true ;;
@@ -960,7 +989,14 @@ main() {
     esac
   fi
 
-  # Display warning if auto-approve is enabled
+  # Auto-execution: -E flag > N3U_AUTO_EXECUTION env > false
+  if [[ "${auto_execution}" != "true" && "${N3U_AUTO_EXECUTION}" == "true" ]]; then
+    auto_execution=true
+  fi
+
+  # ==========================================================================
+  # WARNINGS: Display after resolution
+  # ==========================================================================
   if [[ "${AUTO_APPROVE_ALL}" == "true" ]]; then
     echo "⚠ Warning: Auto-approve (ALL) is enabled - use with caution!"
     echo ""
@@ -969,14 +1005,8 @@ main() {
     echo ""
   fi
 
-  # Apply N3U_AUTO_EXECUTION from .n3u.env (flag -E takes precedence)
-  if [[ "${auto_execution}" != "true" && "${N3U_AUTO_EXECUTION}" == "true" ]]; then
-    auto_execution=true
-  fi
-
-  # Apply workflow ID from -i flag
-  if [[ -n "${workflow_id_arg}" ]]; then
-    WORKFLOW_ID="${workflow_id_arg}"
+  if [[ -n "${local_name_arg}" ]]; then
+    echo "Using local filename from -w flag: ${N8N_WORKFLOW_NAME}"
   fi
 
   # ========================================================================
@@ -1006,10 +1036,6 @@ main() {
   # EXECUTION MODE: -e [EXEC_ID] (standalone execution download)
   # ========================================================================
   if [[ "${do_execution}" == "true" ]]; then
-    # Apply workflow ID from -i flag
-    if [[ -n "${workflow_id_arg}" ]]; then
-      WORKFLOW_ID="${workflow_id_arg}"
-    fi
     handle_execution_mode "${exec_id_arg}"
     exit 0
   fi
@@ -1018,13 +1044,6 @@ main() {
   # DOWNLOAD MODE (default)
   # ========================================================================
   validate_inputs "${workflow_id_arg}"
-
-  # Apply local filename override (-w flag, highest precedence)
-  if [[ -n "${local_name_arg}" ]]; then
-    N8N_WORKFLOW_NAME="${local_name_arg}"
-    echo "Using local filename from -w flag: ${N8N_WORKFLOW_NAME}"
-  fi
-
   check_workflow_exists
 
   # Handle -n flag: get remote workflow name and exit
