@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0.1] - 2025-11-23
+
+### Fixed
+- `-e <ID>` now shows execution info (ID, workflow) like `-e` (latest)
+- `-E` now continues to execution download even when workflow unchanged
+  - Added `|| true` to prevent `set -e` exit on `download_workflow` return 1
+
+### Added
+- `load_env()` now uses `source` for proper variable expansion (e.g., `${LOCAL_WORKFLOW_DIR}/archives`)
+- `load_env_legacy()` - preserved old line-by-line parsing as reference
+- `LOCAL_EXECUTIONS_ARCHIVES` default in configuration section
+- `N3U_AUTO_EXECUTION` env var support (same as `-E` flag)
+
 ## [0.4.0] - 2025-11-23
 
 ### Added

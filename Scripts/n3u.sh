@@ -13,7 +13,7 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.4.0"
+SCRIPT_VERSION="0.4.0.1"
 
 # Default directories (can be overridden by .n3u.env)
 LOCAL_WORKFLOW_DIR="${LOCAL_WORKFLOW_DIR:-./code/workflows}"
@@ -620,7 +620,7 @@ download_execution() {
   local existing_file
   existing_file=$(find "${output_dir}" -name "*_exec-${exec_id}*.json" 2>/dev/null | head -1)
   if [[ -n "${existing_file}" ]]; then
-    echo "INFO: Execution ${exec_id} already downloaded: ${existing_file}"
+    echo "INFO: Execution ${exec_id} already downloaded: ${existing_file} - skipping save"
     return 0
   fi
 
@@ -1040,7 +1040,8 @@ main() {
   output_file=$(build_filename)
 
   # download_workflow handles: temp file, MD5 check, backup if changed, save
-  download_workflow "${output_file}"
+  # Use || true to prevent set -e from exiting on return 1 (unchanged)
+  download_workflow "${output_file}" || true
 
   # ========================================================================
   # EXECUTION MODE: -E auto-fetch after workflow download
@@ -1066,11 +1067,13 @@ handle_execution_mode() {
   fi
 
   if [[ -n "${exec_id}" ]]; then
-    # Specific execution ID provided
-    echo "Downloading execution ${exec_id}..."
+    # Specific execution ID provided - display info like -e (latest) does
+    echo "Execution:"
+    echo "  ID: ${exec_id}"
+    echo "  Workflow: ${WORKFLOW_ID}"
     download_execution "${exec_id}"
   else
-    # No ID provided - get latest
+    # No ID provided - get latest (get_latest_execution_id displays info)
     if get_latest_execution_id; then
       download_execution "${LATEST_EXECUTION_ID}"
     else

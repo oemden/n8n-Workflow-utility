@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.4.0**
+**Version: 0.4.0.1**
 
 Fetch and download n8n Workflows and Executions locally.
 
@@ -193,6 +193,10 @@ Output: `<WORKFLOW_NAME>_exec-<EXEC_ID>-<DATE>.json` in `./code/executions/`
 
 ### Next Priority
 - `-l` / `-L` custom output directories
+
+### Completed in v0.4.0.1
+- ✅ `-e <ID>` now shows execution info (ID, workflow) like `-e` (latest)
+- ✅ `-E` now continues to execution even when workflow unchanged
 
 ### Completed in v0.4.0
 - ✅ `-e [ID]` download execution (latest or specific)
