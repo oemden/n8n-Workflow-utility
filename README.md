@@ -81,8 +81,8 @@ Note: useless to set an execution id in the .env as it is unique to each executi
   -  `-i` fetch/download Workflow (by id)
   -  `-n` fetch/download Workflow (by Name)
   -  `-e` fetch/download Execution json localy (by id)
-  -  `-l` local directory location to save workflow ( bypass `${LOCAL_WORKFLOW_DIR}` )
-  -  `-L` local directory location to save execution ( bypass `${LOCAL_EXECUTIONS_DIR}` )
+  -  `-l` local directory location to save workflow ( bypass `${LOCAL_WORKFLOW_DIR}` ) # ToChange -> use .env `${LOCAL_WORKFLOW_DIR}`
+  -  `-L` local directory location to save execution ( bypass `${LOCAL_EXECUTIONS_DIR}` ) # ToChange -> bypass .env `${LOCAL_WORKFLOW_DIR}`
   -  Output file name format options (simple options): 
     - `-I` (Id): `<WORKFLOW_NAME>-<WORKFLOW_ID>`,
     - `-D` (Date): `<WORKFLOW_NAME>-<DATE>`,
@@ -93,7 +93,7 @@ Note: useless to set an execution id in the .env as it is unique to each executi
   -  `-H` Set additionnals Headers to the command
   -  `-v` Set a "Version" or "Comment" as a suffix (before extension)
   -  `-O` Output .n3u.env Variables
-
+  -  `-m` Add a comments to a workflows-changelog.md, using the workflow download used name as a reference in the /md file
   **Exemples of proposed usage**
 
   - Fetch Workflow whose name is "my_super_Automation" into the folder "Exports" including Name,WorkflowId and download date with the last execution of the workflow:
@@ -124,5 +124,6 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 │   └── workflows
 │       └── archives
 │           └── my-n8n-workflow-v0.1.json
+│       └── executions
 └── my-n8n-workflow.json
 ```
