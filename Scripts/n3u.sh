@@ -13,12 +13,42 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.2.1"
+SCRIPT_VERSION="0.2.2"
 ARCHIVE_DIR="./code/workflows/archives"
+
+# Filename format flags (set by getopts)
+FORMAT_WITH_ID=false
+FORMAT_WITH_DATE=false
+FORMAT_WITH_VERSION=""
 
 # ============================================================================
 # FUNCTIONS
 # ============================================================================
+
+# ------------------------------------------------------------------------------
+# prompt_confirm - Reusable y/n confirmation prompt
+# Arguments: $1 - prompt message (optional, default: "Continue?")
+# Returns: 0 if yes, 1 if no
+# ------------------------------------------------------------------------------
+prompt_confirm() {
+  local message="${1:-Continue?}"
+  local response
+
+  while true; do
+    read -r -p "${message} [y/n]: " response
+    case "${response}" in
+      [yY]|[yY][eE][sS])
+        return 0
+        ;;
+      [nN]|[nN][oO])
+        return 1
+        ;;
+      *)
+        echo "Please answer y or n."
+        ;;
+    esac
+  done
+}
 
 # ------------------------------------------------------------------------------
 # print_usage - Display help message
@@ -31,8 +61,21 @@ Usage: $(basename "$0") [OPTIONS]
 
 Options:
   -i ID   Workflow ID to download (overrides .n3u.env)
+  -n NAME Override workflow name (for filename and upload)
+  -U FILE Upload workflow from local JSON file
+  -I      Include workflow ID in filename
+  -D      Include date in filename
+  -C      Complete format: ID + date in filename
+  -V VER  Add version/comment suffix to filename
   -h      Show this help message
   -v      Show version
+
+Filename formats:
+  (default)  <NAME>.json
+  -I         <NAME>-<ID>.json
+  -D         <NAME>-<YYYYMMDDHHMM>.json
+  -C         <NAME>-<ID>-<YYYYMMDDHHMM>.json
+  -V v1.2    <NAME>-v1.2.json
 
 Examples:
   $(basename "$0")                    # Use WORKFLOW_ID from .n3u.env
@@ -207,11 +250,29 @@ check_workflow_exists() {
 
 # ------------------------------------------------------------------------------
 # build_filename - Build output filename based on options
+# Uses: FORMAT_WITH_ID, FORMAT_WITH_DATE, FORMAT_WITH_VERSION
 # Returns: filename string
 # ------------------------------------------------------------------------------
 build_filename() {
-  # Default: just workflow name (no ID, no date)
-  echo "${N8N_WORKFLOW_NAME}.json"
+  local name="${N8N_WORKFLOW_NAME}"
+  local suffix=""
+
+  # -C (Complete) sets both ID and date
+  if [[ "${FORMAT_WITH_ID}" == "true" ]]; then
+    suffix="${suffix}-${WORKFLOW_ID}"
+  fi
+
+  if [[ "${FORMAT_WITH_DATE}" == "true" ]]; then
+    local date_stamp
+    date_stamp=$(date "+%Y%m%d%H%M")
+    suffix="${suffix}-${date_stamp}"
+  fi
+
+  if [[ -n "${FORMAT_WITH_VERSION}" ]]; then
+    suffix="${suffix}-${FORMAT_WITH_VERSION}"
+  fi
+
+  echo "${name}${suffix}.json"
 }
 
 # ------------------------------------------------------------------------------
@@ -350,9 +411,10 @@ download_workflow() {
 
 main() {
   local workflow_id_arg=""
+  local workflow_name_arg=""
 
   # Parse options
-  while getopts ":hvi:" opt; do
+  while getopts ":hvi:n:IDCV:" opt; do
     case ${opt} in
       h)
         print_usage
@@ -364,6 +426,23 @@ main() {
         ;;
       i)
         workflow_id_arg="${OPTARG}"
+        ;;
+      n)
+        workflow_name_arg="${OPTARG}"
+        ;;
+      I)
+        FORMAT_WITH_ID=true
+        ;;
+      D)
+        FORMAT_WITH_DATE=true
+        ;;
+      C)
+        # Complete = ID + Date
+        FORMAT_WITH_ID=true
+        FORMAT_WITH_DATE=true
+        ;;
+      V)
+        FORMAT_WITH_VERSION="${OPTARG}"
         ;;
       :)
         echo "ERROR: Option -${OPTARG} requires an argument"
@@ -390,6 +469,13 @@ main() {
   load_env
   validate_env
   validate_inputs "${workflow_id_arg}"
+
+  # Apply name override (highest precedence)
+  if [[ -n "${workflow_name_arg}" ]]; then
+    N8N_WORKFLOW_NAME="${workflow_name_arg}"
+    echo "Using workflow name from -n flag: ${N8N_WORKFLOW_NAME}"
+  fi
+
   check_workflow_exists
 
   local output_file
@@ -405,6 +491,7 @@ main "$@"
 # ============================================================================
 # CHANGELOG (latest only - see CHANGELOG.md for full history)
 # ============================================================================
+# v0.2.2 - Filename format options (-I,-D,-C,-V), -n name override, prompt_confirm()
 # v0.2.1 - Variable precedence, MD5 change detection, placeholder safety checks
 # v0.2.0 - Added -i flag, workflow existence check, API validation
 # v0.1.0 - Refactored into functions, backup feature

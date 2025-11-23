@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.2] - 2025-11-23
+
+### Added
+- `prompt_confirm()` - reusable y/n confirmation prompt
+- `-n NAME` flag - override workflow name (for filename and future upload)
+- `-I` flag - include workflow ID in filename
+- `-D` flag - include date in filename
+- `-C` flag - complete format (ID + date in filename)
+- `-V VER` flag - add version/comment suffix to filename
+
+### Changed
+- `build_filename()` - now supports format flags (-I, -D, -C, -V)
+- Help message updated with new options and filename format examples
+
 ## [0.2.1] - 2025-11-23
 
 ### Added

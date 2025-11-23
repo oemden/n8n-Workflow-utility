@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.2.1**
+**Version: 0.2.2**
 
 Fetch and download n8n Workflows and Executions locally.
 
@@ -73,8 +73,22 @@ This allows you to:
 
 **Options:**
 - `-i ID` - Workflow ID to download (overrides .n3u.env)
+- `-n NAME` - Override workflow name (for filename)
+- `-I` - Include workflow ID in filename
+- `-D` - Include date in filename
+- `-C` - Complete format (ID + date)
+- `-V VER` - Add version/comment suffix
 - `-h` - Show help message
 - `-v` - Show version
+
+**Filename formats:**
+```
+(default)  <NAME>.json
+-I         <NAME>-<ID>.json
+-D         <NAME>-<YYYYMMDDHHMM>.json
+-C         <NAME>-<ID>-<YYYYMMDDHHMM>.json
+-V v1.2    <NAME>-v1.2.json
+```
 
 ### Save n8n workflow execution localy
 
@@ -88,6 +102,26 @@ In the Workflow Directory:
   - **Example**: `./fetch_e.sh 1234`
 
 Note: useless to set an execution id in the .env as it is unique to each execution.
+
+## Typical n8n Structure
+
+```bash
+.
+├── .gitignore
+├── .n3u.env.exemple
+├── README.md
+├── code
+│   ├── archives
+│   ├── codeNodes
+│   │   └── n8n-codeNode-extract-values.json
+│   ├── standaloneNodes
+│   │   └── n8n-FormNode-GetValues.json
+│   └── workflows
+│       └── archives
+│           └── my-n8n-workflow-v0.1.json
+│       └── executions
+└── my-n8n-workflow.json
+```
 
 ## TODOs
 
@@ -130,23 +164,3 @@ Note: useless to set an execution id in the .env as it is unique to each executi
     ```
     n3u -i n8nW0rkf0w0001
     ```
-
-## Typical n8n Structure
-
-```bash
-.
-├── .gitignore
-├── .n3u.env.exemple
-├── README.md
-├── code
-│   ├── archives
-│   ├── codeNodes
-│   │   └── n8n-codeNode-extract-values.json
-│   ├── standaloneNodes
-│   │   └── n8n-FormNode-GetValues.json
-│   └── workflows
-│       └── archives
-│           └── my-n8n-workflow-v0.1.json
-│       └── executions
-└── my-n8n-workflow.json
-```
