@@ -13,6 +13,7 @@
 - ✅ `-V` (Version): `<WORKFLOW_NAME>-<VERSION>.json`
 - ✅ MD5 change detection (skip download if unchanged)
 - ✅ MD5 uses base filename (ignores -D/-V suffixes)
+- ✅ `N3U_AUTO_BACKUP` - implement skip backup option
 
 ## Next Priority
 
@@ -60,12 +61,22 @@
 - ✅ `-R FILE` Restore specific archived workflow
 - ✅ `check_name_conflict()` - warn on name collision before upload
 
-## Later
+### Later
 
 - `-D` / `-C` flags: improve MD5 check for date-based filenames (date always changes)
 - `-o` output current .n3u.env variables ( find a way to avoid secrets if possible or use `-O` )
-- `-m` add comments to workflows-changelog.md
-- `N3U_AUTO_BACKUP` - implement skip backup option
-- Rename project to n-triple-u
+- `-V` Change to `-m` - Avoid `-v` confusion, consistent with `-M`
+- `-M` (was planned to be `-m`) - Add comments to workflows-changelog.md, saved in workflows ?
+- Search Workflow id by Name ( ouput only ), get the id of workflow by its name, display list of workflows if more than one or ambiguous results exist.
+- Rename project to "n8n Workflow Utility - n-triple-u"
 - `--long` parameters for all flags
 - Handle archives folder path when overridden by `-l` / `-L`
+
+### Much later
+Multiple Projects 
+- Options to manage More than 1 workflow ?
+-> reccurent backup of Listed Workflows ?
+-> automatic git commits and push ?
+- Detect Folders and tags - in case of More than 1 Workflow ?
+    - Use Folders and/or tags for internal organisation ? would bypass .env
+    - 1x .env per sub-folder/project ?
