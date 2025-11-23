@@ -13,7 +13,7 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.2.2"
+SCRIPT_VERSION="0.2.3"
 ARCHIVE_DIR="./code/workflows/archives"
 
 # Filename format flags (set by getopts)
@@ -293,23 +293,46 @@ get_md5() {
 
 # ------------------------------------------------------------------------------
 # check_workflow_changed - Compare new workflow with existing file
-# Arguments: $1 - new file (temp), $2 - existing file
+# Arguments: $1 - new file (temp), $2 - output file (may have date/version suffix)
 # Returns: 0 if changed (or no existing), 1 if unchanged
+# Note: Derives base filename for comparison (strips -D date and -V version suffixes)
 # ------------------------------------------------------------------------------
 check_workflow_changed() {
   local new_file="$1"
-  local existing_file="$2"
+  local output_file="$2"
 
-  # No existing file = changed (new)
-  if [[ ! -f "${existing_file}" ]]; then
-    return 0
+  # Derive base filename for comparison (strip date/version suffixes)
+  # Output: workflow-ID-202311231234-v1.0.json → workflow-ID.json
+  local base_file="${output_file}"
+
+  # Strip version suffix: -<anything>.json → .json (but keep -ID which is alphanumeric)
+  # Version pattern: dash followed by non-date content before .json
+  # e.g., -v1.0.json, -beta.json, -test.json
+  if [[ -n "${FORMAT_WITH_VERSION}" ]]; then
+    base_file=$(echo "${base_file}" | sed "s/-${FORMAT_WITH_VERSION}\.json$/.json/")
+  fi
+
+  # Strip date suffix: -YYYYMMDDHHMM.json → .json (12 digits)
+  if [[ "${FORMAT_WITH_DATE}" == "true" ]]; then
+    base_file=$(echo "${base_file}" | sed 's/-[0-9]\{12\}\.json$/.json/')
+  fi
+
+  # No base file exists = changed (new)
+  if [[ ! -f "${base_file}" ]]; then
+    # Also check output file directly (in case base == output)
+    if [[ ! -f "${output_file}" ]]; then
+      return 0
+    fi
+    # Output file exists, compare against it
+    base_file="${output_file}"
   fi
 
   local new_md5 existing_md5
   new_md5=$(get_md5 "${new_file}")
-  existing_md5=$(get_md5 "${existing_file}")
+  existing_md5=$(get_md5 "${base_file}")
 
   if [[ "${new_md5}" == "${existing_md5}" ]]; then
+    echo "  (compared against: ${base_file})"
     return 1  # Unchanged
   fi
 
@@ -491,6 +514,7 @@ main "$@"
 # ============================================================================
 # CHANGELOG (latest only - see CHANGELOG.md for full history)
 # ============================================================================
+# v0.2.3 - MD5 check uses base filename (ignores -D date and -V version suffixes)
 # v0.2.2 - Filename format options (-I,-D,-C,-V), -n name override, prompt_confirm()
 # v0.2.1 - Variable precedence, MD5 change detection, placeholder safety checks
 # v0.2.0 - Added -i flag, workflow existence check, API validation

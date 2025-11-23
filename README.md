@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.2.2**
+**Version: 0.2.3**
 
 Fetch and download n8n Workflows and Executions locally.
 
@@ -90,6 +90,22 @@ This allows you to:
 -V v1.2    <NAME>-v1.2.json
 ```
 
+**How MD5 change detection works:**
+
+The script compares the remote workflow against your local file using MD5 checksums. If unchanged, it skips the download.
+
+- `-I` (ID) affects comparison: different ID = different workflow
+- `-D` (date) and `-V` (version) are **ignored** in comparison
+
+This means:
+```bash
+./n3u.sh -V v1.0    # Downloads workflow-v1.0.json
+./n3u.sh            # Compares against workflow.json → skips if unchanged
+./n3u.sh -V v2.0    # Compares against workflow.json → skips if unchanged
+```
+
+The date/version suffixes are for **your local organization**, not workflow identity. The script always compares against the base filename (`<NAME>.json` or `<NAME>-<ID>.json`).
+
 ### Save n8n workflow execution localy
 
 The script will download the execution result locally. you need to input the `<EXECUTION_ID>` as a parameter.
@@ -111,7 +127,6 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 ├── .n3u.env.exemple
 ├── README.md
 ├── code
-│   ├── archives
 │   ├── codeNodes
 │   │   └── n8n-codeNode-extract-values.json
 │   ├── standaloneNodes
@@ -125,42 +140,42 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 
 ## TODOs
 
-- ✅ Use only `.n3u.env`file or `export` to get `<WORKFLOW_ID>` and/or `<EXECUTION_ID>`
-- ✅ turn in to functions, no inline scripting
+### Completed
+- ✅ Use only `.n3u.env` file or `export` to get `<WORKFLOW_ID>` and/or `<EXECUTION_ID>`
+- ✅ Turn into functions, no inline scripting
 - ✅ `-i` fetch/download Workflow (by id)
 - ✅ Validate workflow exists before download
-- rename Project to n-triple-u -> n8n Workflow Utility
-- merge both scripts into one script
-- Retrieve Workflow id by it's name (for upload only)
-- Retrieve Workflow's last Ececution id ?
-- Level Up and Upload a Workflow after changing some code locally ? ( maybe usefull in potential CI/CD pipelines ?)
-- add parameters:
-  -  ✅ `-i` fetch/download Workflow (by id)
-  -  `-n` override Workflow Name (for upload)
-  -  `-e` fetch/download Execution json localy (by id)
-  -  `-l` local directory location to save workflow ( bypass `${LOCAL_WORKFLOW_DIR}` ) # ToChange -> use .env `${LOCAL_WORKFLOW_DIR}`
-  -  `-L` local directory location to save execution ( bypass `${LOCAL_EXECUTIONS_DIR}` ) # ToChange -> bypass .env `${LOCAL_WORKFLOW_DIR}`
-  -  Output file name format options (simple options): 
-    - `-I` (Id): `<WORKFLOW_NAME>-<WORKFLOW_ID>`,
-    - `-D` (Date): `<WORKFLOW_NAME>-<DATE>`,
-    - `-C` (Complete): `<WORKFLOW_NAME>-<WORKFLOW_ID>-<DATE>`,
-    - `No Options`: `<WORKFLOW_NAME>` if `-i`, `<WORKFLOW_ID>` if `-n`.
-  -  `-U` Upload/upgrade Workflow
-  -  `-E` Automatically save last Execution json locally after Workfdlow fetch/download.
-  -  `-H` Set additionnals Headers to the command
-  -  `-v` Set a "Version" or "Comment" as a suffix (before extension)
-  -  `-O` Output .n3u.env Variables
-  -  `-m` Add a comments to a workflows-changelog.md, using the workflow download used name as a reference in the /md file
-  **Exemples of proposed usage**
+- ✅ `-n` override Workflow Name (for filename and upload)
+- ✅ `-I` (Id): `<WORKFLOW_NAME>-<WORKFLOW_ID>.json`
+- ✅ `-D` (Date): `<WORKFLOW_NAME>-<DATE>.json`
+- ✅ `-C` (Complete): `<WORKFLOW_NAME>-<WORKFLOW_ID>-<DATE>.json`
+- ✅ `-V` (Version): `<WORKFLOW_NAME>-<VERSION>.json`
+- ✅ MD5 change detection (skip download if unchanged)
+- ✅ MD5 uses base filename (ignores -D/-V suffixes)
 
-  - Fetch Workflow whose name is "my_super_Automation" into the folder "Exports" including Name,WorkflowId and download date with the last execution of the workflow:
+### Next Priority
+- `-U` Upload/upgrade Workflow
+- `check_name_conflict()` - warn on name collision before upload
 
-    ```
-    n3u -n "my_super_Automation" -l "Exports" -L "Exports" -C -E
-    ```
+### Later
+- Rename Project to n-triple-u -> n8n Workflow Utility
+- Merge both scripts into one script (`fetche.sh` → `n3u.sh`)
+- Retrieve Workflow ID by its name (for upload only)
+- Retrieve Workflow's last Execution ID
+- `-e` fetch/download Execution json locally (by id)
+- `-l` local directory location to save workflow
+- `-L` local directory location to save execution
+- `-E` Automatically save last Execution json locally after Workflow download
+- `-H` Set additional Headers to the command
+- `-O` Output .n3u.env Variables
+- `-m` Add comments to a workflows-changelog.md
 
-  - Fetch Workflow whose id is "n8nW0rkf0w0001" into the local workflow directory :
+### Future Usage Examples
 
-    ```
-    n3u -i n8nW0rkf0w0001
-    ```
+```bash
+# Download with full options (future)
+n3u -n "my_super_Automation" -l "Exports" -C -E
+
+# Upload workflow
+n3u -U ./my-workflow.json -n "New Name"
+```

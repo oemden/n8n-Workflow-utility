@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.3] - 2025-11-23
+
+### Changed
+- `check_workflow_changed()` - MD5 comparison now uses base filename
+  - Strips `-D` date suffix (12 digits) before comparison
+  - Strips `-V` version suffix before comparison
+  - Prevents redundant downloads when using date/version flags
+
+### Fixed
+- MD5 check now correctly detects unchanged workflows when using `-D` or `-V` flags
+
 ## [0.2.2] - 2025-11-23
 
 ### Added
