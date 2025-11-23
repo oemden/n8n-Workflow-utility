@@ -71,6 +71,7 @@
 - Rename project to "n8n Workflow Utility - n-triple-u"
 - `--long` parameters for all flags
 - Handle archives folder path when overridden by `-l` / `-L`
+- Create a New Workflow from file ?
 
 ### Much later
 Multiple Projects 
