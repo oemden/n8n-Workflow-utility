@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.2.0**
+**Version: 0.2.1**
 
 Fetch and download n8n Workflows and Executions locally.
 
@@ -37,6 +37,21 @@ export CLOUDFLARE_ACCESS_CLIENT_SECRET ="my-CF-Acces-client-secret"
 ### local .n3u.env
 
 Scripts detect the presence of a `.n3u.env` file from where the script is called.
+
+### Variable Precedence
+
+Variables are resolved in this order (highest to lowest priority):
+
+| Priority | Source | Example |
+|----------|--------|---------|
+| 1 | Command flags | `-i abc123` |
+| 2 | `.n3u.env` file | `WORKFLOW_ID="abc123"` |
+| 3 | Shell environment | `.zshrc`, `.zsh_aliases`, `export` |
+
+This allows you to:
+- Set global defaults in shell config (API keys, Cloudflare)
+- Override per-project in `.n3u.env` (workflow ID, name)
+- Override per-command with flags (`-i`)
 
 
 ## Usage

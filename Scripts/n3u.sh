@@ -1,11 +1,11 @@
 #!/bin/bash
 #
 # n3u - n8n Workflow Utility
-# v0.2.0 - Added safety checks, placeholder detection, -i flag
+# v0.2.1 - Variable precedence, MD5 change detection, placeholder safety
 # See CHANGELOG.md for full history
 #
-# Usage: ./n3u.sh [OPTIONS] [WORKFLOW_ID]
-# Example: ./n3u.sh gp4Wc0jL6faJWYf7
+# Usage: ./n3u.sh [OPTIONS]
+# Example: ./n3u.sh -i gp4Wc0jL6faJWYf7
 #
 
 set -e
@@ -13,7 +13,7 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.2.0"
+SCRIPT_VERSION="0.2.1"
 ARCHIVE_DIR="./code/workflows/archives"
 
 # ============================================================================
@@ -53,13 +53,13 @@ print_version() {
 
 # ------------------------------------------------------------------------------
 # load_env - Load environment variables from .n3u.env file
+# Precedence: -flags > .n3u.env > User ENV (shell/aliases)
+# Only overrides User ENV if .n3u.env has non-empty value
 # ------------------------------------------------------------------------------
 load_env() {
-  if [ -f .n3u.env ]; then
-    export $(grep -v '^#' .n3u.env | xargs)
-  else
+  if [ ! -f .n3u.env ]; then
     echo "WARNING! No .n3u.env file found. Please create one."
-    echo "Refer to .n3u.env.example for required variables."
+    echo "Refer to .n3u.env.exemple for required variables."
     echo ""
     echo "Required variables:"
     echo "  N8N_API_URL                    - Your n8n API URL"
@@ -70,6 +70,38 @@ load_env() {
     echo "  WORKFLOW_ID                    - Default workflow ID (optional)"
     exit 1
   fi
+
+  # Parse .n3u.env line by line, only set if value is non-empty
+  while IFS='=' read -r key value; do
+    # Skip comments and empty lines
+    [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
+
+    # Remove surrounding quotes from value
+    value=$(echo "$value" | sed 's/^["'\'']*//;s/["'\'']*$//')
+
+    # Only set if value is not empty (preserve User ENV as fallback)
+    if [[ -n "$value" ]]; then
+      export "$key=$value"
+    fi
+  done < .n3u.env
+}
+
+# ------------------------------------------------------------------------------
+# is_placeholder - Check if a variable value matches the example file
+# Arguments: $1 - variable name
+# Returns: 0 if placeholder (unchanged from example), 1 if configured
+# ------------------------------------------------------------------------------
+is_placeholder() {
+  local var_name="$1"
+  local current_value="${!var_name}"  # indirect reference
+
+  # Read example value from .n3u.env.exemple
+  local example_value
+  example_value=$(grep "^${var_name}=" .n3u.env.exemple 2>/dev/null | cut -d'=' -f2- | tr -d '"')
+
+  # If current value matches example value, it's a placeholder
+  [[ "${current_value}" == "${example_value}" ]] && return 0
+  return 1
 }
 
 # ------------------------------------------------------------------------------
@@ -77,6 +109,7 @@ load_env() {
 # ------------------------------------------------------------------------------
 validate_env() {
   local missing=()
+  local placeholders=()
 
   [[ -z "${N8N_API_URL}" ]] && missing+=("N8N_API_URL")
   [[ -z "${N8N_HQ_API_KEY}" ]] && missing+=("N8N_HQ_API_KEY")
@@ -91,6 +124,27 @@ validate_env() {
     done
     echo ""
     echo "Please check your .n3u.env file."
+    exit 1
+  fi
+
+  # Check critical variables for placeholder values
+  if is_placeholder "N8N_API_URL"; then
+    placeholders+=("N8N_API_URL")
+  fi
+  if is_placeholder "N8N_HQ_API_KEY"; then
+    placeholders+=("N8N_HQ_API_KEY")
+  fi
+  if is_placeholder "WORKFLOW_ID"; then
+    placeholders+=("WORKFLOW_ID")
+  fi
+
+  if [[ ${#placeholders[@]} -gt 0 ]]; then
+    echo "ERROR: The following variables appear unchanged from the example file:"
+    for var in "${placeholders[@]}"; do
+      echo "  - ${var}"
+    done
+    echo ""
+    echo "Please configure your .n3u.env file with actual values."
     exit 1
   fi
 }
@@ -161,6 +215,47 @@ build_filename() {
 }
 
 # ------------------------------------------------------------------------------
+# get_md5 - Get MD5 checksum (cross-platform: macOS and Linux)
+# Arguments: $1 - file path
+# Returns: MD5 hash string
+# ------------------------------------------------------------------------------
+get_md5() {
+  local file="$1"
+  if command -v md5 >/dev/null 2>&1; then
+    # macOS
+    md5 -q "${file}"
+  else
+    # Linux
+    md5sum "${file}" | cut -d' ' -f1
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# check_workflow_changed - Compare new workflow with existing file
+# Arguments: $1 - new file (temp), $2 - existing file
+# Returns: 0 if changed (or no existing), 1 if unchanged
+# ------------------------------------------------------------------------------
+check_workflow_changed() {
+  local new_file="$1"
+  local existing_file="$2"
+
+  # No existing file = changed (new)
+  if [[ ! -f "${existing_file}" ]]; then
+    return 0
+  fi
+
+  local new_md5 existing_md5
+  new_md5=$(get_md5 "${new_file}")
+  existing_md5=$(get_md5 "${existing_file}")
+
+  if [[ "${new_md5}" == "${existing_md5}" ]]; then
+    return 1  # Unchanged
+  fi
+
+  return 0  # Changed
+}
+
+# ------------------------------------------------------------------------------
 # backup_existing - Backup existing file if it exists
 # Arguments: $1 - filename to check
 # ------------------------------------------------------------------------------
@@ -184,14 +279,15 @@ backup_existing() {
 # ------------------------------------------------------------------------------
 # download_workflow - Download workflow from n8n API
 # Arguments: $1 - output filename
+# Returns: 0 on success, 1 if unchanged (skipped)
 # ------------------------------------------------------------------------------
 download_workflow() {
   local output_file="$1"
   local response
+  local temp_file
 
   echo "Downloading workflow ${WORKFLOW_ID}..."
   echo "  API URL: ${N8N_API_URL}"
-  echo "  Output:  ${output_file}"
 
   # Fetch workflow from API
   response=$(curl -s -X GET "${N8N_API_URL}/workflows/${WORKFLOW_ID}?excludePinnedData=true" \
@@ -222,16 +318,30 @@ download_workflow() {
     exit 1
   fi
 
-  # Save workflow to file
-  echo "${response}" | jq '.' > "${output_file}"
+  # Save to temp file first
+  temp_file=$(mktemp)
+  echo "${response}" | jq '.' > "${temp_file}"
 
-  if [[ -s "${output_file}" ]]; then
-    echo "Success: Workflow saved to ${output_file}"
-  else
-    echo "ERROR: Failed to save workflow to file"
-    rm -f "${output_file}"
+  if [[ ! -s "${temp_file}" ]]; then
+    echo "ERROR: Failed to process workflow data"
+    rm -f "${temp_file}"
     exit 1
   fi
+
+  # Check if workflow has changed
+  if ! check_workflow_changed "${temp_file}" "${output_file}"; then
+    echo "INFO: Workflow unchanged (checksums match) - skipping save"
+    rm -f "${temp_file}"
+    return 1
+  fi
+
+  # Backup existing file before overwriting
+  backup_existing "${output_file}"
+
+  # Move temp file to final location
+  mv "${temp_file}" "${output_file}"
+  echo "Success: Workflow saved to ${output_file}"
+  return 0
 }
 
 # ============================================================================
@@ -285,7 +395,7 @@ main() {
   local output_file
   output_file=$(build_filename)
 
-  backup_existing "${output_file}"
+  # download_workflow handles: temp file, MD5 check, backup if changed, save
   download_workflow "${output_file}"
 }
 
@@ -295,6 +405,7 @@ main "$@"
 # ============================================================================
 # CHANGELOG (latest only - see CHANGELOG.md for full history)
 # ============================================================================
-# v0.2.0 - Added -i flag, workflow existence check, API validation, error on stray args
-# v0.1.0 - Refactored into functions, added argument parsing, backup feature
+# v0.2.1 - Variable precedence, MD5 change detection, placeholder safety checks
+# v0.2.0 - Added -i flag, workflow existence check, API validation
+# v0.1.0 - Refactored into functions, backup feature
 # v0.0.1 - Initial release

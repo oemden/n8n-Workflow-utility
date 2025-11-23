@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.1] - 2025-11-23
+
+### Added
+- Variable precedence: command flags > `.n3u.env` > shell environment
+- `is_placeholder()` - detects unchanged example values
+- `check_workflow_changed()` - MD5 checksum comparison
+- `get_md5()` - cross-platform MD5 (macOS/Linux)
+- Skip download if workflow unchanged (checksums match)
+
+### Changed
+- `load_env()` - preserves shell ENV as fallback (only overrides if .n3u.env has value)
+- `download_workflow()` - uses temp file, checks MD5 before backup/save
+- Documentation updated with variable precedence
+
 ## [0.2.0] - 2025-11-23
 
 ### Added
