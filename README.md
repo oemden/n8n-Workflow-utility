@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.2.3**
+**Version: 0.2.5**
 
 Fetch and download n8n Workflows and Executions locally.
 
@@ -72,8 +72,11 @@ This allows you to:
 ```
 
 **Options:**
-- `-i ID` - Workflow ID to download (overrides .n3u.env)
-- `-n NAME` - Override workflow name (for filename)
+- `-i ID` - Workflow ID (overrides .n3u.env)
+- `-w NAME` - Override local filename for download
+- `-n` - Get remote workflow name (info only)
+- `-N NAME` - Set remote workflow name (for upload)
+- `-U FILE` - Upload workflow from local JSON file
 - `-I` - Include workflow ID in filename
 - `-D` - Include date in filename
 - `-C` - Complete format (ID + date)
@@ -160,7 +163,8 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 ### Later
 - Rename Project to n-triple-u -> n8n Workflow Utility
 - Merge both scripts into one script (`fetche.sh` → `n3u.sh`)
-- Retrieve Workflow ID by its name (for upload only)
+- `-n` Retrieve Workflow ID by its name (for info only)
+- `-N` Set/Change Workflow's name (for upload only)
 - Retrieve Workflow's last Execution ID
 - `-e` fetch/download Execution json locally (by id)
 - `-l` local directory location to save workflow
@@ -169,6 +173,10 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 - `-H` Set additional Headers to the command
 - `-O` Output .n3u.env Variables
 - `-m` Add comments to a workflows-changelog.md
+- `-???` Omit backup file when downloading workflows while local file exist ( NEW .env option tto )
+- Assess All options parameters and see if we can do better/simpler less confusing
+- add --parameters to all -p parameters ?
+- handle arch98ives folder path when overriden by paramters (-l -L)
 
 ### Future Usage Examples
 

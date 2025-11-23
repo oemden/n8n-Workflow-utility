@@ -13,8 +13,11 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.2.3"
+SCRIPT_VERSION="0.2.5"
 ARCHIVE_DIR="./code/workflows/archives"
+
+# Remote workflow name (set by check_workflow_exists)
+REMOTE_WORKFLOW_NAME=""
 
 # Filename format flags (set by getopts)
 FORMAT_WITH_ID=false
@@ -60,8 +63,10 @@ n3u - n8n Workflow Utility v${SCRIPT_VERSION}
 Usage: $(basename "$0") [OPTIONS]
 
 Options:
-  -i ID   Workflow ID to download (overrides .n3u.env)
-  -n NAME Override workflow name (for filename and upload)
+  -i ID   Workflow ID (overrides .n3u.env)
+  -w NAME Override local filename for download
+  -n      Get remote workflow name (info only)
+  -N NAME Set remote workflow name (for upload)
   -U FILE Upload workflow from local JSON file
   -I      Include workflow ID in filename
   -D      Include date in filename
@@ -213,6 +218,7 @@ validate_inputs() {
 
 # ------------------------------------------------------------------------------
 # check_workflow_exists - Verify workflow exists in n8n before proceeding
+# Sets: REMOTE_WORKFLOW_NAME (global)
 # Exits with error if workflow not found
 # ------------------------------------------------------------------------------
 check_workflow_exists() {
@@ -245,7 +251,72 @@ check_workflow_exists() {
     exit 1
   fi
 
-  echo "Workflow verified: ${WORKFLOW_ID}"
+  # Extract and store remote workflow name
+  REMOTE_WORKFLOW_NAME=$(echo "${response}" | jq -r '.name')
+
+  echo "Workflow verified: ${WORKFLOW_ID} (${REMOTE_WORKFLOW_NAME})"
+}
+
+# ------------------------------------------------------------------------------
+# check_name_consistency - Compare remote vs local workflow name
+# Uses: REMOTE_WORKFLOW_NAME (global), N8N_WORKFLOW_NAME (env)
+# Warns and prompts if mismatch
+# ------------------------------------------------------------------------------
+check_name_consistency() {
+  # Skip if local name not set
+  if [[ -z "${N8N_WORKFLOW_NAME}" ]]; then
+    echo "INFO: N8N_WORKFLOW_NAME not set in .n3u.env"
+    echo "      Remote workflow name: ${REMOTE_WORKFLOW_NAME}"
+    echo "      Consider adding: N8N_WORKFLOW_NAME=\"${REMOTE_WORKFLOW_NAME}\""
+    return 0
+  fi
+
+  # Compare names
+  if [[ "${N8N_WORKFLOW_NAME}" == "${REMOTE_WORKFLOW_NAME}" ]]; then
+    echo "Name check: OK (local and remote names match)"
+    return 0
+  fi
+
+  # Mismatch - warn and confirm
+  echo ""
+  echo "WARNING: Workflow name mismatch!"
+  echo "  Remote (n8n):  ${REMOTE_WORKFLOW_NAME}"
+  echo "  Local (.env):  ${N8N_WORKFLOW_NAME}"
+  echo ""
+
+  if ! prompt_confirm "Names differ. Continue anyway?"; then
+    echo "Aborted by user."
+    exit 0
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# get_workflow_name - Display remote workflow name (-n flag)
+# Uses: REMOTE_WORKFLOW_NAME (already fetched by check_workflow_exists)
+# Shows comparison with local ENV setting
+# ------------------------------------------------------------------------------
+get_workflow_name() {
+  echo ""
+  echo "Workflow ID:   ${WORKFLOW_ID}"
+  echo "Workflow Name: ${REMOTE_WORKFLOW_NAME}"
+  echo ""
+
+  # Show comparison with ENV
+  if [[ -z "${N8N_WORKFLOW_NAME}" ]]; then
+    echo "Local (.n3u.env): (not set)"
+    echo ""
+    echo "To set in .n3u.env:"
+    echo "  N8N_WORKFLOW_NAME=\"${REMOTE_WORKFLOW_NAME}\""
+  elif [[ "${N8N_WORKFLOW_NAME}" == "${REMOTE_WORKFLOW_NAME}" ]]; then
+    echo "Local (.n3u.env): ${N8N_WORKFLOW_NAME}"
+    echo "Status: OK - names match"
+  else
+    echo "Local (.n3u.env): ${N8N_WORKFLOW_NAME}"
+    echo "Status: MISMATCH - names differ!"
+    echo ""
+    echo "To sync, update .n3u.env:"
+    echo "  N8N_WORKFLOW_NAME=\"${REMOTE_WORKFLOW_NAME}\""
+  fi
 }
 
 # ------------------------------------------------------------------------------
@@ -434,10 +505,12 @@ download_workflow() {
 
 main() {
   local workflow_id_arg=""
-  local workflow_name_arg=""
+  local local_name_arg=""      # -w: local filename override
+  local get_remote_name=false  # -n: get remote name (info)
+  local remote_name_arg=""     # -N: set remote name (upload)
 
   # Parse options
-  while getopts ":hvi:n:IDCV:" opt; do
+  while getopts ":hvi:w:nN:IDCV:" opt; do
     case ${opt} in
       h)
         print_usage
@@ -450,8 +523,14 @@ main() {
       i)
         workflow_id_arg="${OPTARG}"
         ;;
+      w)
+        local_name_arg="${OPTARG}"
+        ;;
       n)
-        workflow_name_arg="${OPTARG}"
+        get_remote_name=true
+        ;;
+      N)
+        remote_name_arg="${OPTARG}"
         ;;
       I)
         FORMAT_WITH_ID=true
@@ -493,13 +572,22 @@ main() {
   validate_env
   validate_inputs "${workflow_id_arg}"
 
-  # Apply name override (highest precedence)
-  if [[ -n "${workflow_name_arg}" ]]; then
-    N8N_WORKFLOW_NAME="${workflow_name_arg}"
-    echo "Using workflow name from -n flag: ${N8N_WORKFLOW_NAME}"
+  # Apply local filename override (-w flag, highest precedence)
+  if [[ -n "${local_name_arg}" ]]; then
+    N8N_WORKFLOW_NAME="${local_name_arg}"
+    echo "Using local filename from -w flag: ${N8N_WORKFLOW_NAME}"
   fi
 
   check_workflow_exists
+
+  # Handle -n flag: get remote workflow name and exit
+  if [[ "${get_remote_name}" == "true" ]]; then
+    get_workflow_name
+    exit 0
+  fi
+
+  # Check name consistency (warn + confirm if mismatch)
+  check_name_consistency
 
   local output_file
   output_file=$(build_filename)
@@ -514,8 +602,10 @@ main "$@"
 # ============================================================================
 # CHANGELOG (latest only - see CHANGELOG.md for full history)
 # ============================================================================
+# v0.2.5 - Name consistency check: warn + confirm if remote/local names differ
+# v0.2.4 - Naming refactor: -w (local filename), -n (get remote name), -N (set remote name)
 # v0.2.3 - MD5 check uses base filename (ignores -D date and -V version suffixes)
-# v0.2.2 - Filename format options (-I,-D,-C,-V), -n name override, prompt_confirm()
+# v0.2.2 - Filename format options (-I,-D,-C,-V), -w name override, prompt_confirm()
 # v0.2.1 - Variable precedence, MD5 change detection, placeholder safety checks
 # v0.2.0 - Added -i flag, workflow existence check, API validation
 # v0.1.0 - Refactored into functions, backup feature

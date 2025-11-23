@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.5] - 2025-11-23
+
+### Added
+- `check_name_consistency()` - compares remote vs local workflow name
+- Name consistency check runs before every download
+- `-n` flag now shows comparison status (match/mismatch)
+
+### Changed
+- `check_workflow_exists()` now extracts and stores `REMOTE_WORKFLOW_NAME`
+- `get_workflow_name()` reuses fetched data, shows ENV comparison
+- Mismatch prompts user to confirm before proceeding
+
+## [0.2.4] - 2025-11-23
+
+### Added
+- `-w NAME` flag - override local filename for download (was `-n`)
+- `-n` flag - get remote workflow name (info only)
+- `-N NAME` flag - set remote workflow name (for upload, used with `-U`)
+- `get_workflow_name()` - fetch and display remote workflow name
+
+### Changed
+- **Breaking**: `-n` no longer takes an argument - use `-w` for local filename override
+
 ## [0.2.3] - 2025-11-23
 
 ### Changed
