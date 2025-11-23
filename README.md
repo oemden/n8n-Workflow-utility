@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.3.1**
+**Version: 0.4.0**
 
 Fetch and download n8n Workflows and Executions locally.
 
@@ -62,7 +62,7 @@ This allows you to:
 ```bash
 ./Scripts/n3u.sh -i <WORKFLOW_ID>
 # Example:
-./Scripts/n3u.sh -i gp4Wc0jL6faJWYf7
+./Scripts/n3u.sh -i gp01234ABCDEF
 ```
 
 **Using `.n3u.env` file:**
@@ -83,6 +83,8 @@ This allows you to:
 - `-C` - Complete format (ID + date)
 - `-V VER` - Add version/comment suffix
 - `-y` - Auto-approve minor confirmations (name mismatch)
+- `-e [ID]` - Download execution (latest if no ID, or specific ID)
+- `-E` - Auto-fetch latest execution after workflow download
 - `-Y` - Auto-approve ALL confirmations (including uploads)
 - `-h` - Show help message
 - `-v` - Show version
@@ -135,18 +137,25 @@ The date/version suffixes are for **your local organization**, not workflow iden
 
 **Fields stripped:** `id`, `active`, `updatedAt`, `createdAt`, `shared`, `versionId`, `versionCounter`, `triggerCount`, `isArchived`, `meta`, `staticData`
 
-### Save n8n workflow execution localy
+### Download execution
 
-The script will download the execution result locally. you need to input the `<EXECUTION_ID>` as a parameter.
-Makes no sense to save this in .env file, but finding lats' execution id of a Workflow could the trick
+**Download latest execution:**
+```bash
+./Scripts/n3u.sh -e              # Downloads latest execution for workflow in .n3u.env
+./Scripts/n3u.sh -i <ID> -e      # Downloads latest execution for specific workflow
+```
 
-In the Workflow Directory:
+**Download specific execution:**
+```bash
+./Scripts/n3u.sh -e 12345        # Downloads execution with ID 12345
+```
 
-- click on the Execution Tab to get the ID.
-  - **Usage**: `./fetche.sh <EXECUTION_ID>`
-  - **Example**: `./fetch_e.sh 1234`
+**Auto-fetch after workflow download:**
+```bash
+./Scripts/n3u.sh -E              # Downloads workflow + latest execution
+```
 
-Note: useless to set an execution id in the .env as it is unique to each execution.
+Output: `<WORKFLOW_NAME>_exec-<EXEC_ID>-<DATE>.json` in `./code/executions/`
 
 ## Typical n8n Structure
 
@@ -183,9 +192,14 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 - ✅ MD5 uses base filename (ignores -D/-V suffixes)
 
 ### Next Priority
-- `-e` download execution by ID
-- Merge both scripts (`fetche.sh` → `n3u.sh`)
 - `-l` / `-L` custom output directories
+
+### Completed in v0.4.0
+- ✅ `-e [ID]` download execution (latest or specific)
+- ✅ `-E` auto-fetch latest execution after workflow download
+- ✅ Merged `fetche.sh` into main script (removed)
+- ✅ `get_latest_execution_id()` function
+- ✅ `download_execution()` function
 
 ### Completed in v0.3.1
 - ✅ `-y` / `-Y` Auto-approve (minor / all) with `AUTO_APPROVE` env var
@@ -196,22 +210,15 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 - ✅ `check_name_conflict()` - warn on name collision before upload
 
 ### Later
-- Rename Project to n-triple-u -> n8n Workflow Utility
-- Merge both scripts into one script (`fetche.sh` → `n3u.sh`)
-- `-n` Retrieve Workflow ID by its name (for info only)
-- `-N` Set/Change Workflow's name (for upload only)
-- Retrieve Workflow's last Execution ID
-- `-e` fetch/download Execution json locally (by id)
-- `-l` local directory location to save workflow
-- `-L` local directory location to save execution
-- `-E` Automatically save last Execution json locally after Workflow download
-- `-H` Set additional Headers to the command
-- `-O` Output .n3u.env Variables
-- `-m` Add comments to a workflows-changelog.md
-- `-???` Omit backup file when downloading workflows while local file exist ( NEW .env option tto )
-- Assess All options parameters and see if we can do better/simpler less confusing
-- add --parameters to all -p parameters ?
-- handle arch98ives folder path when overriden by paramters (-l -L)
+- Retrieve workflow's last Execution ID
+- `-E` auto-fetch last execution after workflow download
+- `-H` extra headers for API requests
+- `-O` output current .n3u.env variables
+- `-m` add comments to workflows-changelog.md
+- `N3U_AUTO_BACKUP` - implement skip backup option
+- Rename project to n-triple-u
+- `--long` parameters for all flags
+- Handle archives folder path when overridden by `-l` / `-L`
 
 ### Future Usage Examples
 

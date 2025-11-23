@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2025-11-23
+
+### Added
+- Execution existence check - skip download if already exists (exec IDs are unique)
+- Execution filename now follows workflow naming flags (-I, -D, -C, -w)
+- `-e [ID]` flag - download execution (latest if no ID, or specific)
+- `-E` flag - auto-fetch latest execution after workflow download
+- `get_latest_execution_id()` - fetch most recent execution for workflow
+- `download_execution()` - download execution JSON to `./code/executions/`
+
+### Changed
+- `download_execution()` - default filename: `<NAME>_exec-<ID>.json` (no date by default)
+- With `-D`: `<NAME>_exec-<ID>-<DATE>.json`
+- With `-I`: `<NAME>-<WF_ID>_exec-<ID>.json`
+- With `-C`: `<NAME>-<WF_ID>_exec-<ID>-<DATE>.json`
+
+### Removed
+- `Scripts/fetche.sh` - merged into main script
+
 ## [0.3.1] - 2025-11-23
 
 ### Added

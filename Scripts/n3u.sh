@@ -1,11 +1,11 @@
 #!/bin/bash
 #
 # n3u - n8n Workflow Utility
-# v0.2.1 - Variable precedence, MD5 change detection, placeholder safety
+# v0.4.0 - Variable precedence, MD5 change detection, placeholder safety
 # See CHANGELOG.md for full history
 #
 # Usage: ./n3u.sh [OPTIONS]
-# Example: ./n3u.sh -i gp4Wc0jL6faJWYf7
+# Example: ./n3u.sh -i gp01234ABCDEF
 #
 
 set -e
@@ -13,8 +13,13 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.3.1"
-ARCHIVE_DIR="./code/workflows/archives"
+SCRIPT_VERSION="0.4.0"
+
+# Default directories (can be overridden by .n3u.env)
+LOCAL_WORKFLOW_DIR="${LOCAL_WORKFLOW_DIR:-./code/workflows}"
+LOCAL_WORKFLOW_ARCHIVES="${LOCAL_WORKFLOW_ARCHIVES:-${LOCAL_WORKFLOW_DIR}/archives}"
+LOCAL_EXECUTIONS_DIR="${LOCAL_EXECUTIONS_DIR:-./code/executions}"
+LOCAL_EXECUTIONS_ARCHIVES="${LOCAL_EXECUTIONS_ARCHIVES:-${LOCAL_EXECUTIONS_DIR}/archives}"
 
 # Remote workflow name (set by check_workflow_exists)
 REMOTE_WORKFLOW_NAME=""
@@ -90,6 +95,8 @@ Options:
   -D        Include date in filename
   -C        Complete format: ID + date in filename
   -V VER    Add version/comment suffix to filename
+  -e [ID]   Download execution (latest if no ID, or specific ID)
+  -E        Auto-fetch latest execution after workflow download
   -y        Auto-approve minor confirmations (name mismatch)
   -Y        Auto-approve ALL confirmations (including uploads)
   -h        Show this help message
@@ -104,7 +111,7 @@ Filename formats:
 
 Examples:
   $(basename "$0")                    # Use WORKFLOW_ID from .n3u.env
-  $(basename "$0") -i gp4Wc0jL6faJWYf7   # Download specific workflow
+  $(basename "$0") -i gp01234ABCDEF   # Download specific workflow
 
 Configuration:
   Create a .n3u.env file in your project root with required variables.
@@ -123,8 +130,35 @@ print_version() {
 # load_env - Load environment variables from .n3u.env file
 # Precedence: -flags > .n3u.env > User ENV (shell/aliases)
 # Only overrides User ENV if .n3u.env has non-empty value
+# Uses `source` for proper variable expansion (e.g., ${LOCAL_WORKFLOW_DIR})
 # ------------------------------------------------------------------------------
 load_env() {
+  if [ ! -f .n3u.env ]; then
+    echo "WARNING! No .n3u.env file found. Please create one."
+    echo "Refer to .n3u.env.exemple for required variables."
+    echo ""
+    echo "Required variables:"
+    echo "  N8N_API_URL                    - Your n8n API URL"
+    echo "  N8N_HQ_API_KEY                 - Your n8n API key"
+    echo "  N8N_WORKFLOW_NAME              - Workflow name for output file"
+    echo "  CLOUDFLARE_ACCESS_CLIENT_ID    - Cloudflare Access client ID"
+    echo "  CLOUDFLARE_ACCESS_CLIENT_SECRET - Cloudflare Access client secret"
+    echo "  WORKFLOW_ID                    - Default workflow ID (optional)"
+    exit 1
+  fi
+
+  # Source the .n3u.env file - enables variable expansion like ${VAR}/path
+  # shellcheck disable=SC1091
+  source .n3u.env
+}
+
+# ------------------------------------------------------------------------------
+# load_env_legacy - Load environment variables from .n3u.env file (line-by-line)
+# Precedence: -flags > .n3u.env > User ENV (shell/aliases)
+# Only overrides User ENV if .n3u.env has non-empty value
+# NOTE: Does NOT expand variable references like ${VAR} - use load_env() instead
+# ------------------------------------------------------------------------------
+load_env_legacy() {
   if [ ! -f .n3u.env ]; then
     echo "WARNING! No .n3u.env file found. Please create one."
     echo "Refer to .n3u.env.exemple for required variables."
@@ -439,12 +473,12 @@ backup_existing() {
 
   if [[ -f "${filename}" ]]; then
     # Create archive directory if it doesn't exist
-    mkdir -p "${ARCHIVE_DIR}"
+    mkdir -p "${LOCAL_WORKFLOW_ARCHIVES}"
 
     local backup_date
     backup_date=$(date "+%Y%m%d%H%M")
     local backup_name="${N8N_WORKFLOW_NAME}-${backup_date}.bak.json"
-    local backup_path="${ARCHIVE_DIR}/${backup_name}"
+    local backup_path="${LOCAL_WORKFLOW_ARCHIVES}/${backup_name}"
 
     echo "Backing up existing file to: ${backup_path}"
     mv "${filename}" "${backup_path}"
@@ -516,6 +550,138 @@ download_workflow() {
   # Move temp file to final location
   mv "${temp_file}" "${output_file}"
   echo "Success: Workflow saved to ${output_file}"
+  return 0
+}
+
+# ------------------------------------------------------------------------------
+# get_latest_execution_id - Get the most recent execution ID for a workflow
+# Uses: WORKFLOW_ID
+# Returns: Sets LATEST_EXECUTION_ID, LATEST_EXECUTION_STATUS, LATEST_EXECUTION_DATE
+# ------------------------------------------------------------------------------
+get_latest_execution_id() {
+  local response
+
+  echo "Fetching latest execution for workflow ${WORKFLOW_ID}..."
+
+  response=$(curl -s -X GET "${N8N_API_URL}/executions?workflowId=${WORKFLOW_ID}&limit=1" \
+    -H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}" \
+    -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
+    -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
+    -H "Accept: application/json")
+
+  if [[ -z "${response}" ]]; then
+    echo "ERROR: Empty response from API"
+    return 1
+  fi
+
+  # Check for API error
+  if echo "${response}" | jq -e '.message' >/dev/null 2>&1; then
+    local error_msg
+    error_msg=$(echo "${response}" | jq -r '.message')
+    echo "ERROR: API returned error: ${error_msg}"
+    return 1
+  fi
+
+  # Extract execution data
+  local exec_count
+  exec_count=$(echo "${response}" | jq -r '.data | length')
+
+  if [[ "${exec_count}" == "0" ]]; then
+    echo "INFO: No executions found for workflow ${WORKFLOW_ID}"
+    return 1
+  fi
+
+  LATEST_EXECUTION_ID=$(echo "${response}" | jq -r '.data[0].id')
+  LATEST_EXECUTION_STATUS=$(echo "${response}" | jq -r '.data[0].status // .data[0].finished // "unknown"')
+  LATEST_EXECUTION_DATE=$(echo "${response}" | jq -r '.data[0].startedAt // .data[0].createdAt // "unknown"')
+
+  echo "Latest execution:"
+  echo "  ID: ${LATEST_EXECUTION_ID}"
+  echo "  Status: ${LATEST_EXECUTION_STATUS}"
+  echo "  Date: ${LATEST_EXECUTION_DATE}"
+
+  return 0
+}
+
+# ------------------------------------------------------------------------------
+# download_execution - Download execution from n8n API
+# Arguments: $1 - execution ID, $2 - output directory (optional)
+# Uses: N8N_WORKFLOW_NAME, LOCAL_EXECUTIONS_DIR
+# ------------------------------------------------------------------------------
+download_execution() {
+  local exec_id="$1"
+  local output_dir="${2:-${LOCAL_EXECUTIONS_DIR}}"
+  local response
+
+  # Ensure output directory exists
+  mkdir -p "${output_dir}"
+
+  # Check if execution already downloaded (exec IDs are unique, no need for MD5)
+  local existing_file
+  existing_file=$(find "${output_dir}" -name "*_exec-${exec_id}*.json" 2>/dev/null | head -1)
+  if [[ -n "${existing_file}" ]]; then
+    echo "INFO: Execution ${exec_id} already downloaded: ${existing_file}"
+    return 0
+  fi
+
+  # Build filename using same format flags as workflow download
+  local name="${N8N_WORKFLOW_NAME}"
+  local suffix=""
+
+  if [[ "${FORMAT_WITH_ID}" == "true" ]]; then
+    suffix="${suffix}-${WORKFLOW_ID}"
+  fi
+
+  # Execution ID is always included (uniqueness)
+  suffix="${suffix}_exec-${exec_id}"
+
+  if [[ "${FORMAT_WITH_DATE}" == "true" ]]; then
+    local exec_date
+    exec_date=$(date "+%Y%m%d%H%M")
+    suffix="${suffix}-${exec_date}"
+  fi
+
+  local output_file="${output_dir}/${name}${suffix}.json"
+
+  echo "Downloading execution ${exec_id}..."
+  echo "  API URL: ${N8N_API_URL}"
+
+  response=$(curl -s -X GET "${N8N_API_URL}/executions/${exec_id}?includeData=true" \
+    -H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}" \
+    -H "CF-Access-Client-Id: ${CLOUDFLARE_ACCESS_CLIENT_ID}" \
+    -H "CF-Access-Client-Secret: ${CLOUDFLARE_ACCESS_CLIENT_SECRET}" \
+    -H "Accept: application/json")
+
+  if [[ -z "${response}" ]]; then
+    echo "ERROR: Empty response from API"
+    return 1
+  fi
+
+  # Check for API error
+  if echo "${response}" | jq -e '.message' >/dev/null 2>&1; then
+    local error_msg
+    error_msg=$(echo "${response}" | jq -r '.message')
+    echo "ERROR: API returned error: ${error_msg}"
+    return 1
+  fi
+
+  # Check if response has expected execution structure
+  if ! echo "${response}" | jq -e '.id' >/dev/null 2>&1; then
+    echo "ERROR: Invalid response - not a valid execution"
+    echo "${response}" | head -c 200
+    return 1
+  fi
+
+  # Save execution
+  echo "${response}" | jq '.' > "${output_file}"
+
+  if [[ ! -s "${output_file}" ]]; then
+    echo "ERROR: Failed to save execution data"
+    rm -f "${output_file}"
+    return 1
+  fi
+
+  echo "Success: Execution saved to ${output_file}"
   return 0
 }
 
@@ -695,9 +861,12 @@ main() {
   local remote_name_arg=""     # -N: set remote name (upload)
   local do_upload=false        # -U: upload current workflow
   local restore_file=""        # -R: restore specific file
+  local exec_id_arg=""         # -e: execution ID (empty = latest)
+  local do_execution=false     # -e flag was used
+  local auto_execution=false   # -E: auto-fetch after workflow download
 
   # Parse options
-  while getopts ":hvi:w:nN:UR:IDCV:yY" opt; do
+  while getopts ":hvi:w:nN:UR:IDCV:yYeE" opt; do
     case ${opt} in
       h)
         print_usage
@@ -745,6 +914,12 @@ main() {
       Y)
         AUTO_APPROVE_ALL=true
         ;;
+      e)
+        do_execution=true
+        ;;
+      E)
+        auto_execution=true
+        ;;
       :)
         echo "ERROR: Option -${OPTARG} requires an argument"
         print_usage
@@ -759,10 +934,17 @@ main() {
   done
   shift $((OPTIND - 1))
 
+  # Handle positional argument for -e (execution ID)
+  if [[ "${do_execution}" == "true" && $# -gt 0 ]]; then
+    exec_id_arg="$1"
+    shift
+  fi
+
   # Warn about stray positional arguments
   if [[ $# -gt 0 ]]; then
     echo "ERROR: Unknown argument(s): $*"
     echo "       Use -i <ID> to specify workflow ID"
+    echo "       Use -e [EXEC_ID] to download execution"
     exit 1
   fi
 
@@ -785,6 +967,11 @@ main() {
   elif [[ "${AUTO_APPROVE_MINOR}" == "true" ]]; then
     echo "⚠ Warning: Auto-approve (minor) is enabled"
     echo ""
+  fi
+
+  # Apply N3U_AUTO_EXECUTION from .n3u.env (flag -E takes precedence)
+  if [[ "${auto_execution}" != "true" && "${N3U_AUTO_EXECUTION}" == "true" ]]; then
+    auto_execution=true
   fi
 
   # Apply workflow ID from -i flag
@@ -816,6 +1003,18 @@ main() {
   fi
 
   # ========================================================================
+  # EXECUTION MODE: -e [EXEC_ID] (standalone execution download)
+  # ========================================================================
+  if [[ "${do_execution}" == "true" ]]; then
+    # Apply workflow ID from -i flag
+    if [[ -n "${workflow_id_arg}" ]]; then
+      WORKFLOW_ID="${workflow_id_arg}"
+    fi
+    handle_execution_mode "${exec_id_arg}"
+    exit 0
+  fi
+
+  # ========================================================================
   # DOWNLOAD MODE (default)
   # ========================================================================
   validate_inputs "${workflow_id_arg}"
@@ -842,6 +1041,42 @@ main() {
 
   # download_workflow handles: temp file, MD5 check, backup if changed, save
   download_workflow "${output_file}"
+
+  # ========================================================================
+  # EXECUTION MODE: -E auto-fetch after workflow download
+  # ========================================================================
+  if [[ "${auto_execution}" == "true" ]]; then
+    echo ""
+    if get_latest_execution_id; then
+      download_execution "${LATEST_EXECUTION_ID}"
+    fi
+  fi
+}
+
+# ============================================================================
+# EXECUTION MODE: -e [EXEC_ID] (standalone execution download)
+# ============================================================================
+handle_execution_mode() {
+  local exec_id="$1"
+
+  # Need workflow ID to find executions
+  if [[ -z "${WORKFLOW_ID}" ]]; then
+    echo "ERROR: No workflow ID. Use -i <ID> or set WORKFLOW_ID in .n3u.env"
+    exit 1
+  fi
+
+  if [[ -n "${exec_id}" ]]; then
+    # Specific execution ID provided
+    echo "Downloading execution ${exec_id}..."
+    download_execution "${exec_id}"
+  else
+    # No ID provided - get latest
+    if get_latest_execution_id; then
+      download_execution "${LATEST_EXECUTION_ID}"
+    else
+      exit 1
+    fi
+  fi
 }
 
 # Run main function
