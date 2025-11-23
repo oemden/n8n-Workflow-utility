@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.2.5.1**
+**Version: 0.3.0**
 
 Fetch and download n8n Workflows and Executions locally.
 
@@ -76,7 +76,8 @@ This allows you to:
 - `-w NAME` - Override local filename for download
 - `-n` - Get remote workflow name (info only)
 - `-N NAME` - Set remote workflow name (for upload)
-- `-U FILE` - Upload workflow from local JSON file
+- `-U` - Upload current workflow to n8n
+- `-R FILE` - Restore/upload specific file (archive) to n8n
 - `-I` - Include workflow ID in filename
 - `-D` - Include date in filename
 - `-C` - Complete format (ID + date)
@@ -108,6 +109,29 @@ This means:
 ```
 
 The date/version suffixes are for **your local organization**, not workflow identity. The script always compares against the base filename (`<NAME>.json` or `<NAME>-<ID>.json`).
+
+### Upload workflow to n8n
+
+**Upload current workflow:**
+```bash
+./Scripts/n3u.sh -U              # Uses N8N_WORKFLOW_NAME from .n3u.env
+./Scripts/n3u.sh -U -N "NewName" # Override name on upload
+```
+
+**Restore from archive:**
+```bash
+./Scripts/n3u.sh -R ./code/workflows/archives/my-workflow-v1.bak.json
+```
+
+**How upload works:**
+- Reads workflow ID from file JSON (or uses `-i` flag)
+- Checks for name conflicts (warns if name exists with different ID)
+- Strips read-only metadata fields before upload (n8n rejects extra properties)
+- Uses PUT to update existing workflow
+
+**Fields uploaded:** `name`, `nodes`, `connections`, `settings`
+
+**Fields stripped:** `id`, `active`, `updatedAt`, `createdAt`, `shared`, `versionId`, `versionCounter`, `triggerCount`, `isArchived`, `meta`, `staticData`
 
 ### Save n8n workflow execution localy
 
@@ -157,8 +181,14 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 - ✅ MD5 uses base filename (ignores -D/-V suffixes)
 
 ### Next Priority
-- `-U` Upload/upgrade Workflow
-- `check_name_conflict()` - warn on name collision before upload
+- `-e` download execution by ID
+- Merge both scripts (`fetche.sh` → `n3u.sh`)
+- `-l` / `-L` custom output directories
+
+### Completed in v0.3.0
+- ✅ `-U` Upload/upgrade Workflow
+- ✅ `-R FILE` Restore specific archived workflow
+- ✅ `check_name_conflict()` - warn on name collision before upload
 
 ### Later
 - Rename Project to n-triple-u -> n8n Workflow Utility
@@ -174,6 +204,7 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 - `-O` Output .n3u.env Variables
 - `-m` Add comments to a workflows-changelog.md
 - `-???` Omit backup file when downloading workflows while local file exist ( NEW .env option tto )
+- `-Y` auto-approve. allow all chnages, display any Warning(s)
 - Assess All options parameters and see if we can do better/simpler less confusing
 - add --parameters to all -p parameters ?
 - handle arch98ives folder path when overriden by paramters (-l -L)

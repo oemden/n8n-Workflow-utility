@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2025-11-23
+
+### Added
+- `-U` flag - upload current workflow to n8n
+- `-R FILE` flag - restore/upload specific file (archive) to n8n
+- `upload_workflow()` - shared upload function for -U and -R
+- `check_name_conflict()` - warns if workflow name exists with different ID
+- README upload section explaining field handling
+
+### Changed
+- Main flow restructured: upload mode vs download mode (default)
+- Upload strips read-only fields (n8n rejects extra properties)
+- Fields uploaded: `name`, `nodes`, `connections`, `settings`
+
 ## [0.2.5.1] - 2025-11-23
 
 ### Fixed
