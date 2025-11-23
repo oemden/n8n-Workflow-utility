@@ -1,6 +1,6 @@
 # n8n Workflow utility - n3u -> N triple U
 
-**Version: 0.3.0**
+**Version: 0.3.1**
 
 Fetch and download n8n Workflows and Executions locally.
 
@@ -82,6 +82,8 @@ This allows you to:
 - `-D` - Include date in filename
 - `-C` - Complete format (ID + date)
 - `-V VER` - Add version/comment suffix
+- `-y` - Auto-approve minor confirmations (name mismatch)
+- `-Y` - Auto-approve ALL confirmations (including uploads)
 - `-h` - Show help message
 - `-v` - Show version
 
@@ -185,6 +187,9 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 - Merge both scripts (`fetche.sh` → `n3u.sh`)
 - `-l` / `-L` custom output directories
 
+### Completed in v0.3.1
+- ✅ `-y` / `-Y` Auto-approve (minor / all) with `AUTO_APPROVE` env var
+
 ### Completed in v0.3.0
 - ✅ `-U` Upload/upgrade Workflow
 - ✅ `-R FILE` Restore specific archived workflow
@@ -204,7 +209,6 @@ Note: useless to set an execution id in the .env as it is unique to each executi
 - `-O` Output .n3u.env Variables
 - `-m` Add comments to a workflows-changelog.md
 - `-???` Omit backup file when downloading workflows while local file exist ( NEW .env option tto )
-- `-Y` auto-approve. allow all chnages, display any Warning(s)
 - Assess All options parameters and see if we can do better/simpler less confusing
 - add --parameters to all -p parameters ?
 - handle arch98ives folder path when overriden by paramters (-l -L)

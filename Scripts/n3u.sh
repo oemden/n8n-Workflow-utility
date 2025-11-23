@@ -13,7 +13,7 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.3.0"
+SCRIPT_VERSION="0.3.1"
 ARCHIVE_DIR="./code/workflows/archives"
 
 # Remote workflow name (set by check_workflow_exists)
@@ -24,18 +24,35 @@ FORMAT_WITH_ID=false
 FORMAT_WITH_DATE=false
 FORMAT_WITH_VERSION=""
 
+# Auto-approve flags (set by getopts or .n3u.env)
+AUTO_APPROVE_MINOR=false
+AUTO_APPROVE_ALL=false
+
 # ============================================================================
 # FUNCTIONS
 # ============================================================================
 
 # ------------------------------------------------------------------------------
-# prompt_confirm - Reusable y/n confirmation prompt
+# prompt_confirm - Reusable y/n confirmation prompt with auto-approve support
 # Arguments: $1 - prompt message (optional, default: "Continue?")
+#            $2 - risk level: "minor" or "major" (default: "major")
 # Returns: 0 if yes, 1 if no
 # ------------------------------------------------------------------------------
 prompt_confirm() {
   local message="${1:-Continue?}"
+  local risk_level="${2:-major}"
   local response
+
+  # Check auto-approve settings
+  if [[ "${AUTO_APPROVE_ALL}" == "true" ]]; then
+    echo "⚠ Auto-approve (ALL) - proceeding without confirmation"
+    return 0
+  fi
+
+  if [[ "${AUTO_APPROVE_MINOR}" == "true" && "${risk_level}" == "minor" ]]; then
+    echo "⚠ Auto-approve (minor) - proceeding without confirmation"
+    return 0
+  fi
 
   while true; do
     read -r -p "${message} [y/n]: " response
@@ -73,6 +90,8 @@ Options:
   -D        Include date in filename
   -C        Complete format: ID + date in filename
   -V VER    Add version/comment suffix to filename
+  -y        Auto-approve minor confirmations (name mismatch)
+  -Y        Auto-approve ALL confirmations (including uploads)
   -h        Show this help message
   -v        Show version
 
@@ -285,7 +304,7 @@ check_name_consistency() {
   echo "  Local (.env):  ${N8N_WORKFLOW_NAME}"
   echo ""
 
-  if ! prompt_confirm "Names differ. Continue anyway?"; then
+  if ! prompt_confirm "Names differ. Continue anyway?" "minor"; then
     echo "Aborted by user."
     exit 0
   fi
@@ -537,7 +556,7 @@ check_name_conflict() {
     echo "  Your workflow ID: ${current_id}"
     echo ""
 
-    if ! prompt_confirm "A different workflow has this name. Continue anyway?"; then
+    if ! prompt_confirm "A different workflow has this name. Continue anyway?" "major"; then
       echo "Upload cancelled."
       exit 0
     fi
@@ -607,7 +626,7 @@ upload_workflow() {
   echo ""
 
   # Confirm upload
-  if ! prompt_confirm "Upload workflow to n8n?"; then
+  if ! prompt_confirm "Upload workflow to n8n?" "major"; then
     echo "Upload cancelled."
     exit 0
   fi
@@ -678,7 +697,7 @@ main() {
   local restore_file=""        # -R: restore specific file
 
   # Parse options
-  while getopts ":hvi:w:nN:UR:IDCV:" opt; do
+  while getopts ":hvi:w:nN:UR:IDCV:yY" opt; do
     case ${opt} in
       h)
         print_usage
@@ -720,6 +739,12 @@ main() {
       V)
         FORMAT_WITH_VERSION="${OPTARG}"
         ;;
+      y)
+        AUTO_APPROVE_MINOR=true
+        ;;
+      Y)
+        AUTO_APPROVE_ALL=true
+        ;;
       :)
         echo "ERROR: Option -${OPTARG} requires an argument"
         print_usage
@@ -744,6 +769,23 @@ main() {
   # Load environment
   load_env
   validate_env
+
+  # Apply AUTO_APPROVE from .n3u.env (flags take precedence)
+  if [[ "${AUTO_APPROVE_MINOR}" != "true" && "${AUTO_APPROVE_ALL}" != "true" ]]; then
+    case "${AUTO_APPROVE:-none}" in
+      minor) AUTO_APPROVE_MINOR=true ;;
+      all)   AUTO_APPROVE_ALL=true ;;
+    esac
+  fi
+
+  # Display warning if auto-approve is enabled
+  if [[ "${AUTO_APPROVE_ALL}" == "true" ]]; then
+    echo "⚠ Warning: Auto-approve (ALL) is enabled - use with caution!"
+    echo ""
+  elif [[ "${AUTO_APPROVE_MINOR}" == "true" ]]; then
+    echo "⚠ Warning: Auto-approve (minor) is enabled"
+    echo ""
+  fi
 
   # Apply workflow ID from -i flag
   if [[ -n "${workflow_id_arg}" ]]; then

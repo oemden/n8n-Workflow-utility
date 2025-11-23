@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] - 2025-11-23
+
+### Added
+- `-y` flag - auto-approve minor confirmations (name mismatch)
+- `-Y` flag - auto-approve ALL confirmations (including uploads)
+- `AUTO_APPROVE` env var (none/minor/all) in `.n3u.env`
+
+### Changed
+- `prompt_confirm()` now accepts risk level argument (minor/major)
+
 ## [0.3.0] - 2025-11-23
 
 ### Added
