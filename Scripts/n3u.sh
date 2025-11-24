@@ -1,7 +1,6 @@
 #!/bin/bash
 #
 # n3u - n8n Workflow Utility
-# v0.4.0 - Variable precedence, MD5 change detection, placeholder safety
 # See CHANGELOG.md for full history
 #
 # Usage: ./n3u.sh [OPTIONS]
@@ -13,7 +12,7 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.5.0"
+SCRIPT_VERSION="0.5.1"
 
 # Default directories (can be overridden by .n3u.env)
 LOCAL_WORKFLOW_DIR="${LOCAL_WORKFLOW_DIR:-./code/workflows}"
@@ -158,82 +157,100 @@ print_version() {
 }
 
 # ------------------------------------------------------------------------------
+# bootstrap_env - Download .n3u.env.exemple and create .n3u.env if missing
+# Offers to download from GitHub repo and auto-add to .gitignore
+# ------------------------------------------------------------------------------
+N3U_EXEMPLE_URL="https://raw.githubusercontent.com/oemden/n8n-Workflow-utility/develop/.n3u.env.exemple"
+
+bootstrap_env() {
+  # Already have .n3u.env - nothing to do
+  [[ -f .n3u.env ]] && return 0
+
+  echo "No .n3u.env file found in current directory."
+  echo ""
+  echo "Template URL:"
+  echo "  ${N3U_EXEMPLE_URL}"
+  echo ""
+  echo "  [1] Download template automatically"
+  echo "  [2] Quit, and fetch manually the template from the URL above"
+  echo ""
+
+  local response
+  while true; do
+    read -r -p "Choice [1/2]: " response
+    case "${response}" in
+      1)
+        echo ""
+        echo "Downloading .n3u.env template..."
+        if ! curl -fsSL "${N3U_EXEMPLE_URL}" -o .n3u.env 2>/dev/null; then
+          echo "ERROR: Failed to download template."
+          exit 1
+        fi
+        echo "Created: .n3u.env"
+
+        # Auto-add to .gitignore if in a git repo
+        if [[ -d .git ]]; then
+          if ! grep -q "^\.n3u\.env$" .gitignore 2>/dev/null; then
+            echo ".n3u.env" >> .gitignore
+            echo "Added .n3u.env to .gitignore"
+          fi
+        fi
+
+        echo ""
+        echo "Next steps:"
+        echo "  1. Edit .n3u.env with your values (at minimum: N8N_API_URL, N8N_HQ_API_KEY)"
+        echo "  2. Run n3u again"
+        exit 0
+        ;;
+      2)
+        echo ""
+        echo "Manual setup steps:"
+        echo "  1. Download the template from the URL above"
+        echo "  2. Save it as .n3u.env in this directory"
+        echo "  3. Edit .n3u.env with your values (at minimum: N8N_API_URL, N8N_HQ_API_KEY)"
+        echo "  4. Add .n3u.env to .gitignore (if using git)"
+        echo "  5. Run n3u again"
+        echo "  All this is automated if you choose option 1."
+        exit 1
+        ;;
+      *)
+        echo "Please answer 1 or 2."
+        ;;
+    esac
+  done
+}
+
+# ------------------------------------------------------------------------------
 # load_env - Load environment variables from .n3u.env file
 # Precedence: -flags > .n3u.env > User ENV (shell/aliases)
 # Only overrides User ENV if .n3u.env has non-empty value
 # Uses `source` for proper variable expansion (e.g., ${LOCAL_WORKFLOW_DIR})
 # ------------------------------------------------------------------------------
 load_env() {
-  if [ ! -f .n3u.env ]; then
-    echo "WARNING! No .n3u.env file found. Please create one."
-    echo "Refer to .n3u.env.exemple for required variables."
-    echo ""
-    echo "Required variables:"
-    echo "  N8N_API_URL                    - Your n8n API URL"
-    echo "  N8N_HQ_API_KEY                 - Your n8n API key"
-    echo "  N8N_WORKFLOW_NAME              - Workflow name for output file"
-    echo "  CLOUDFLARE_ACCESS_CLIENT_ID    - Cloudflare Access client ID"
-    echo "  CLOUDFLARE_ACCESS_CLIENT_SECRET - Cloudflare Access client secret"
-    echo "  WORKFLOW_ID                    - Default workflow ID (optional)"
-    exit 1
-  fi
+  # Bootstrap if .n3u.env doesn't exist
+  bootstrap_env
 
   # Source the .n3u.env file - enables variable expansion like ${VAR}/path
   # shellcheck disable=SC1091
   source .n3u.env
 }
 
-# ------------------------------------------------------------------------------
-# load_env_legacy - Load environment variables from .n3u.env file (line-by-line)
-# Precedence: -flags > .n3u.env > User ENV (shell/aliases)
-# Only overrides User ENV if .n3u.env has non-empty value
-# NOTE: Does NOT expand variable references like ${VAR} - use load_env() instead
-# ------------------------------------------------------------------------------
-load_env_legacy() {
-  if [ ! -f .n3u.env ]; then
-    echo "WARNING! No .n3u.env file found. Please create one."
-    echo "Refer to .n3u.env.exemple for required variables."
-    echo ""
-    echo "Required variables:"
-    echo "  N8N_API_URL                    - Your n8n API URL"
-    echo "  N8N_HQ_API_KEY                 - Your n8n API key"
-    echo "  N8N_WORKFLOW_NAME              - Workflow name for output file"
-    echo "  CLOUDFLARE_ACCESS_CLIENT_ID    - Cloudflare Access client ID"
-    echo "  CLOUDFLARE_ACCESS_CLIENT_SECRET - Cloudflare Access client secret"
-    echo "  WORKFLOW_ID                    - Default workflow ID (optional)"
-    exit 1
-  fi
-
-  # Parse .n3u.env line by line, only set if value is non-empty
-  while IFS='=' read -r key value; do
-    # Skip comments and empty lines
-    [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
-
-    # Remove surrounding quotes from value
-    value=$(echo "$value" | sed 's/^["'\'']*//;s/["'\'']*$//')
-
-    # Only set if value is not empty (preserve User ENV as fallback)
-    if [[ -n "$value" ]]; then
-      export "$key=$value"
-    fi
-  done < .n3u.env
-}
 
 # ------------------------------------------------------------------------------
-# is_placeholder - Check if a variable value matches the example file
+# is_placeholder - Check if a variable still has its placeholder value
 # Arguments: $1 - variable name
-# Returns: 0 if placeholder (unchanged from example), 1 if configured
+# Returns: 0 if placeholder (unchanged), 1 if configured with real value
 # ------------------------------------------------------------------------------
 is_placeholder() {
   local var_name="$1"
-  local current_value="${!var_name}"  # indirect reference
+  local current_value="${!var_name}"
 
-  # Read example value from .n3u.env.exemple
-  local example_value
-  example_value=$(grep "^${var_name}=" .n3u.env.exemple 2>/dev/null | cut -d'=' -f2- | tr -d '"')
-
-  # If current value matches example value, it's a placeholder
-  [[ "${current_value}" == "${example_value}" ]] && return 0
+  # Known placeholder values from canonical .n3u.env.exemple
+  case "${var_name}" in
+    N8N_API_URL)    [[ "${current_value}" == "https://n8n.example.com/api/v1" ]] && return 0 ;;
+    N8N_HQ_API_KEY) [[ "${current_value}" == "your_n8n_api_key_here" ]] && return 0 ;;
+    WORKFLOW_ID)    [[ "${current_value}" == "your_n8n_workflow_id_here" ]] && return 0 ;;
+  esac
   return 1
 }
 
@@ -247,8 +264,6 @@ validate_env() {
   [[ -z "${N8N_API_URL}" ]] && missing+=("N8N_API_URL")
   [[ -z "${N8N_HQ_API_KEY}" ]] && missing+=("N8N_HQ_API_KEY")
   [[ -z "${N8N_WORKFLOW_NAME}" ]] && missing+=("N8N_WORKFLOW_NAME")
-  [[ -z "${CLOUDFLARE_ACCESS_CLIENT_ID}" ]] && missing+=("CLOUDFLARE_ACCESS_CLIENT_ID")
-  [[ -z "${CLOUDFLARE_ACCESS_CLIENT_SECRET}" ]] && missing+=("CLOUDFLARE_ACCESS_CLIENT_SECRET")
 
   if [[ ${#missing[@]} -gt 0 ]]; then
     echo "ERROR: Missing required environment variables:"
@@ -278,6 +293,9 @@ validate_env() {
     done
     echo ""
     echo "Please configure your .n3u.env file with actual values."
+    echo ""
+    echo "Hint: Did you customize your .n3u.env.exemple with real values?"
+    echo "      The .n3u.env.exemple should contain placeholder values, not your actual config."
     exit 1
   fi
 }

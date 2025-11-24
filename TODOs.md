@@ -20,6 +20,41 @@
 - `-N` vs `N8N_WORKFLOW_NAME` -> if -N empty value -> use ENV value, if ENV value empty -> meesage and ask to continue without changing name ( if other options are set ), or cancel uplaod / Restore. ( if only -N / -R is set )
 - `-l` / `-L` custom output directories
 
+### Later
+- Bootstrap: prompt user for mandatory values (N8N_API_URL, N8N_HQ_API_KEY) after download
+- Bootstrap: `-S` / `--setup` flag - interactive setup to configure .n3u.env values
+- Config: store `.n3u.env.exemple` in `~/.config/n3u/` during install (avoid re-download)
+- Config: version check to retrieve latest `.n3u.env.exemple` if changed
+- Recheck if Directory structure exist and if functions create them if missing ( aka create directory sub-structure if it does not exist - respect .n3u.env )
+- `-D` / `-C` flags: improve MD5 check for date-based filenames (date always changes)
+- `-o` output current .n3u.env variables ( find a way to avoid secrets if possible or use `-O` )
+- `-V` Change to `-m` - Avoid `-v` confusion, consistent with `-M`
+- `-M` (was planned to be `-m`) - Add comments to workflows-changelog.md, saved in workflows ?
+- Search Workflow id by Name ( ouput only ), get the id of workflow by its name, display list of workflows if more than one or ambiguous results exist.
+- Rename project to "n8n Workflow Utility - n-triple-u"
+- `--long` parameters for all flags
+- Handle archives folder path when overridden by `-l` / `-L`
+- Create a New Workflow from file ?
+
+
+### Much later
+Multiple Projects 
+- Options to manage More than 1 workflow ?
+-> reccurent backup of Listed Workflows ?
+-> automatic git commits and push ?
+- Detect Folders and tags - in case of More than 1 Workflow ?
+    - Use Folders and/or tags for internal organisation ? would bypass .env
+    - 1x .env per sub-folder/project ?
+
+
+## Completed in v0.5.1
+
+- ✅ `bootstrap_env()` - auto-download `.n3u.env` template when missing
+- ✅ `is_placeholder()` - hardcoded placeholder values (no `.n3u.env.exemple` file dependency)
+- ✅ Auto-add `.n3u.env` to `.gitignore` if in git repo
+- ✅ Removed `load_env_legacy()` function
+- ✅ Removed Cloudflare vars from required list in `validate_env()`
+
 ## Completed in v0.5.0
 
 - ✅ `n8n_api()` wrapper function - single point for all API calls
@@ -60,24 +95,3 @@
 - ✅ `-U` Upload/upgrade Workflow
 - ✅ `-R FILE` Restore specific archived workflow
 - ✅ `check_name_conflict()` - warn on name collision before upload
-
-### Later
-
-- `-D` / `-C` flags: improve MD5 check for date-based filenames (date always changes)
-- `-o` output current .n3u.env variables ( find a way to avoid secrets if possible or use `-O` )
-- `-V` Change to `-m` - Avoid `-v` confusion, consistent with `-M`
-- `-M` (was planned to be `-m`) - Add comments to workflows-changelog.md, saved in workflows ?
-- Search Workflow id by Name ( ouput only ), get the id of workflow by its name, display list of workflows if more than one or ambiguous results exist.
-- Rename project to "n8n Workflow Utility - n-triple-u"
-- `--long` parameters for all flags
-- Handle archives folder path when overridden by `-l` / `-L`
-- Create a New Workflow from file ?
-
-### Much later
-Multiple Projects 
-- Options to manage More than 1 workflow ?
--> reccurent backup of Listed Workflows ?
--> automatic git commits and push ?
-- Detect Folders and tags - in case of More than 1 Workflow ?
-    - Use Folders and/or tags for internal organisation ? would bypass .env
-    - 1x .env per sub-folder/project ?
