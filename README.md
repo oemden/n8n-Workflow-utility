@@ -2,7 +2,7 @@
 
 **n8n Workflow utility - n3u** ( *pronounce N triple U* ), fetch and download n8n Workflows and Executions locally.
 
-**Version: 0.5.1**
+**Version: 0.5.2**
 
 A simple script to fetch a workflow and download it locally or download the Execution result of a workflow by providing the execution id, allowing to version control your workflow in a dedicated git Repo and roll it back to your last working commited version.
 

@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.2] - 2025-11-24
+
+### Added
+- `-H` flag - add custom headers via command line
+  - Can be used multiple times: `-H "Header1: value" -H "Header2: value"`
+  - Combined with `N3U_HEADER_*` env vars (additive, not override)
+
+### Changed
+- Headers now resolved in EARLY RESOLUTION block (consistent with other params)
+- `n8n_api()` uses `ALL_HEADERS` array instead of inline env var loop
+
 ## [0.5.1] - 2025-11-24
 
 ### Added

@@ -12,7 +12,7 @@ set -e
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
-SCRIPT_VERSION="0.5.1"
+SCRIPT_VERSION="0.5.2"
 
 # Default directories (can be overridden by .n3u.env)
 LOCAL_WORKFLOW_DIR="${LOCAL_WORKFLOW_DIR:-./code/workflows}"
@@ -32,6 +32,10 @@ FORMAT_WITH_VERSION=""
 AUTO_APPROVE_MINOR=false
 AUTO_APPROVE_ALL=false
 
+# Custom headers from -H flags (resolved in EARLY RESOLUTION)
+CLI_HEADERS=()
+ALL_HEADERS=()
+
 # ============================================================================
 # FUNCTIONS
 # ============================================================================
@@ -43,7 +47,7 @@ AUTO_APPROVE_ALL=false
 #            $3 - JSON payload for PUT/POST (optional)
 # Returns: curl response (JSON)
 # Headers: Always includes X-N8N-API-KEY and Accept
-#          Adds all N3U_HEADER_* env vars (value = "Header-Name: value")
+#          Adds ALL_HEADERS (resolved from N3U_HEADER_* env + -H flags)
 # ------------------------------------------------------------------------------
 n8n_api() {
   local method="$1"
@@ -54,9 +58,9 @@ n8n_api() {
   headers+=(-H "X-N8N-API-KEY: ${N8N_HQ_API_KEY}")
   headers+=(-H "Accept: application/json")
 
-  # Add all N3U_HEADER_* values (already in "Header-Name: value" format)
-  for var in $(compgen -v | grep "^N3U_HEADER_"); do
-    [[ -n "${!var}" ]] && headers+=(-H "${!var}")
+  # Add resolved custom headers (N3U_HEADER_* + -H flags)
+  for header in "${ALL_HEADERS[@]}"; do
+    headers+=(-H "${header}")
   done
 
   if [[ -n "${data}" ]]; then
@@ -119,6 +123,7 @@ Options:
   -w NAME   Override local filename for download
   -n        Get remote workflow name (info only)
   -N NAME   Set remote workflow name (for upload)
+  -H HDR    Add custom header (can be used multiple times)
   -U        Upload current workflow to n8n
   -R FILE   Restore/upload specific file to n8n
   -I        Include workflow ID in filename
@@ -142,6 +147,7 @@ Filename formats:
 Examples:
   $(basename "$0")                    # Use WORKFLOW_ID from .n3u.env
   $(basename "$0") -i gp01234ABCDEF   # Download specific workflow
+  $(basename "$0") -H "Authorization: Bearer token"  # With custom header
 
 Configuration:
   Create a .n3u.env file in your project root with required variables.
@@ -902,7 +908,7 @@ main() {
   local auto_execution=false   # -E: auto-fetch after workflow download
 
   # Parse options
-  while getopts ":hvi:w:nN:UR:IDCV:yYeE" opt; do
+  while getopts ":hvi:w:nN:UR:IDCV:yYeEH:" opt; do
     case ${opt} in
       h)
         print_usage
@@ -955,6 +961,9 @@ main() {
         ;;
       E)
         auto_execution=true
+        ;;
+      H)
+        CLI_HEADERS+=("${OPTARG}")
         ;;
       :)
         echo "ERROR: Option -${OPTARG} requires an argument"
@@ -1015,6 +1024,15 @@ main() {
   if [[ "${auto_execution}" != "true" && "${N3U_AUTO_EXECUTION}" == "true" ]]; then
     auto_execution=true
   fi
+
+  # Headers: N3U_HEADER_* env vars + -H flags (additive)
+  ALL_HEADERS=()
+  for var in $(compgen -v | grep "^N3U_HEADER_"); do
+    [[ -n "${!var}" ]] && ALL_HEADERS+=("${!var}")
+  done
+  for header in "${CLI_HEADERS[@]}"; do
+    ALL_HEADERS+=("${header}")
+  done
 
   # ==========================================================================
   # WARNINGS: Display after resolution
