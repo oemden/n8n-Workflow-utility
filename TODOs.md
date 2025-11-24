@@ -27,9 +27,11 @@ Changelog [CHANGELOG.md](CHANGELOG.md)
 - Bootstrap: `-S` / `--setup` flag - interactive setup to configure .n3u.env values
 - Config: store `.n3u.env.exemple` in `~/.config/n3u/` during install (avoid re-download)
 - Config: version check to retrieve latest `.n3u.env.exemple` if changed
+- Headers: `-H` override - allow `-H` to override mandatory headers (API key, etc.)
+- Debug: verbosity levels (`-d`, `-v` verbose) - show URL, headers sent
+- Debug: `-o` / `-O` output current .n3u.env variables with secret masking (e.g., `****` vs real value)
 - Recheck if Directory structure exist and if functions create them if missing ( aka create directory sub-structure if it does not exist - respect .n3u.env )
 - `-D` / `-C` flags: improve MD5 check for date-based filenames (date always changes)
-- `-o` output current .n3u.env variables ( find a way to avoid secrets if possible or use `-O` )
 - `-V` Change to `-m` - Avoid `-v` confusion, consistent with `-M`
 - `-M` (was planned to be `-m`) - Add comments to workflows-changelog.md, saved in workflows ?
 - Search Workflow id by Name ( ouput only ), get the id of workflow by its name, display list of workflows if more than one or ambiguous results exist.
@@ -48,6 +50,12 @@ Multiple Projects
     - Use Folders and/or tags for internal organisation ? would bypass .env
     - 1x .env per sub-folder/project ?
 
+
+## Completed in v0.5.2
+
+- ✅ `-H` flag - add custom headers via command line (can be used multiple times)
+- ✅ Headers resolved in EARLY RESOLUTION block (consistent with other params)
+- ✅ `n8n_api()` uses `ALL_HEADERS` array (env + CLI combined)
 
 ## Completed in v0.5.1
 
