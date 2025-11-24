@@ -1,5 +1,7 @@
 # n3u - TODOs & Roadmap
 
+Changelog [CHANGELOG.md](CHANGELOG.md)
+
 ## Completed
 
 - ✅ Use only `.n3u.env` file or `export` to get `<WORKFLOW_ID>` and/or `<EXECUTION_ID>`
