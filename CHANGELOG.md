@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.1] - 2025-11-24
+
+### Added
+- `bootstrap_env()` - auto-download `.n3u.env` template when missing
+  - Prompts user to download or shows URL for manual fetch
+  - Auto-adds `.n3u.env` to `.gitignore` if in git repo
+  - Shows next steps after download
+- Improved error message for placeholder detection (hint about customized exemple file)
+
+### Changed
+- `is_placeholder()` - now uses hardcoded known placeholder values instead of reading from `.n3u.env.exemple`
+  - Works reliably when example file doesn't exist in project
+  - Checks: `N8N_API_URL`, `N8N_HQ_API_KEY`, `WORKFLOW_ID`
+- `validate_env()` - Cloudflare vars no longer required (use `N3U_HEADER_*` system)
+- `load_env()` - simplified, calls `bootstrap_env()` first
+
+### Removed
+- `load_env_legacy()` function (line-by-line parsing) - `source` works fine
+- Cloudflare vars from required variables list
+
 ## [0.5.0] - 2025-11-23
 
 ### Added
