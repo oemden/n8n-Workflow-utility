@@ -2,13 +2,15 @@
 
 **n8n Workflow utility - n3u** ( *pronounce N triple U* ), fetch and download n8n Workflows and Executions locally.
 
-**Version: 0.5.0**
+**Version: 0.5.1**
 
 A simple script to fetch a workflow and download it locally or download the Execution result of a workflow by providing the execution id, allowing to version control your workflow in a dedicated git Repo and roll it back to your last working commited version.
+
 
 If you've ever found yourself working on a complex n8n workflow, saving it repeatedly while testing, and then realizing you can't remember which version was the last working one, this might help. Or perhaps you've accidentally broken a production workflow and wished you had a quick way to restore yesterday's or last working version.
 These are the situations that led to the craetion of this tool. Now we can save snapshots before major changes, add meaningful version tags like "before-api-refactor," and when something inevitably breaks, have a clear trail back to what worked amd restore last working version.
 
+> **⚠️ Note:** Please test on a dummy workflow first. I've had no issues so far, but it's always good practice to verify on non-critical workflows before using on important ones.
 
 ### Features:
 
@@ -17,6 +19,12 @@ These are the situations that led to the craetion of this tool. Now we can save 
 - Auto-backup existing files to archives
 - Cloudflare Access authentication support
 - Upload or restore Workflow
+
+### TODOs
+
+See [TODOs.md](TODOs.md) for the complete roadmap and changelog [CHANGELOG.md](CHANGELOG.md).
+
+
 
 ### Http Headers:
 
@@ -258,8 +266,4 @@ You can change paths in the `.n3u.env` file if above structure does not suit you
 │       └── executions
 └── my-n8n-workflow.json
 ```
-
-## TODOs
-
-See [TODOs.md](TODOs.md) for the complete roadmap and changelog.
 
